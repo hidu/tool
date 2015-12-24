@@ -1,5 +1,7 @@
 #!/bin/bash
+set -x
 cd $(dirname $0)
+mkdir -p ../dest/bin/
 
 go build -o ../dest/bin/json_indent -ldflags "-s -w"  json_indent.go 
 #go build -o ../dest/bin/qqwry -ldflags "-s -w"  qqwry.go 

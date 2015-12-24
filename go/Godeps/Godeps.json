@@ -1,7 +1,11 @@
 {
 	"ImportPath": "github.com/hidu/tool/go",
-	"GoVersion": "go1.5.1",
+	"GoVersion": "go1.5.2",
 	"Deps": [
+		{
+			"ImportPath": "github.com/beefsack/go-rate",
+			"Rev": "de575b104f4218f4aebdc95ba56f61f38d0dad86"
+		},
 		{
 			"ImportPath": "github.com/clbanning/x2j",
 			"Rev": "0e45c2228aab9921ef50cc7d0bf7186082cc51a4"
