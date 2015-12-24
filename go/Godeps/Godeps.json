@@ -1,0 +1,31 @@
+{
+	"ImportPath": "github.com/hidu/tool/go",
+	"GoVersion": "go1.5.1",
+	"Deps": [
+		{
+			"ImportPath": "github.com/clbanning/x2j",
+			"Rev": "0e45c2228aab9921ef50cc7d0bf7186082cc51a4"
+		},
+		{
+			"ImportPath": "github.com/go-sql-driver/mysql",
+			"Comment": "v1.2-118-g3dd7008",
+			"Rev": "3dd7008ac1529aca1bcd8a9db75228a71ba23cac"
+		},
+		{
+			"ImportPath": "github.com/hidu/goutils",
+			"Rev": "ee2ee06e1fab98420ba500419a9cac952d58e82d"
+		},
+		{
+			"ImportPath": "github.com/xeipuuv/gojsonpointer",
+			"Rev": "636edb2500d21f2ed09ea96a00deb36bbd07cf70"
+		},
+		{
+			"ImportPath": "github.com/xeipuuv/gojsonreference",
+			"Rev": "e02fc20de94c78484cd5ffb007f8af96be030a45"
+		},
+		{
+			"ImportPath": "github.com/xeipuuv/gojsonschema",
+			"Rev": "ac452913faa25c08bb78810d3e6f88b8a39f8f25"
+		}
+	]
+}

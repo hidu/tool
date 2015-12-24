@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<data>
+    <netid>
+        <disable>no</disable>
+ <disable>yes</disable>
+        <text1>default:text</text1>
+        <word1>default:word</word1>
+    </netid>
+</data>

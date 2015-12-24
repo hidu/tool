@@ -1,0 +1,25 @@
+{
+	"type":"object",
+	"properties":{
+		"datas":{
+			"type":"object",
+			"properties":{
+				"item":{
+					"type":"array",
+					"items":{
+						"type":"object",
+						"properties":{
+							"a":{
+								"type":"array",
+								"items":{
+									"type":"string"
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		
+	}
+}

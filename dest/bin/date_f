@@ -1,0 +1,2 @@
+#!/bin/bash
+date +"%F %T %A" --date="@$1"

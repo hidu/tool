@@ -1,0 +1,4 @@
+#!/bin/bash
+proxy=$1
+url="http://1.su.bdimg.com/icon/weather/aladdin/png_18/a0.png"
+curl -y 60 -Y 1 -m 300 -x $proxy -o _a0.png $url
