@@ -82,8 +82,8 @@ func main() {
 
 func printTsResult(tsArr []*TimeMaps) {
 	fmt.Println("")
-	fmt.Println(strings.Repeat("=", 45))
-	header := "index\tconnect\twrite\tread\ttotal\ttatus\n" + strings.Repeat("-", 45)
+	fmt.Println(strings.Repeat("=", 80))
+	header := "index\tconnect(ms)\twrite(ms)\tread(ms)\ttotal(ms)\thttp_code\n" + strings.Repeat("-", 80)
 	fmt.Println(header)
 	stpl := "%s\t%.2f\t%.2f\t%.2f\t%.2f\t%d\n"
 

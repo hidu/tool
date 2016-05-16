@@ -23,7 +23,7 @@ type resData struct {
 	ID      uint64 `json:"id"`
 	Request string `json:"request'`
 }
-type Datas struct{
+type Datas struct {
 	ResData []*resData
 }
 
@@ -55,7 +55,7 @@ func HelloServer(w http.ResponseWriter, req *http.Request) {
 		repeat_num = 1
 	}
 
-	datas:=new(Datas)
+	datas := new(Datas)
 
 	for i := 0; i < repeat_num; i++ {
 		datas.ResData = append(datas.ResData, item)
