@@ -79,13 +79,16 @@ func main() {
 	}
 	printTsResult(tsArr)
 }
-
 func printTsResult(tsArr []*TimeMaps) {
+	line := strings.Repeat("=", 80)
+
 	fmt.Println("")
-	fmt.Println(strings.Repeat("=", 80))
+	fmt.Println(line)
+	fmt.Println("Detail:")
+	fmt.Println(line)
 	header := "index\tconnect(ms)\twrite(ms)\tread(ms)\ttotal(ms)\thttp_code\n" + strings.Repeat("-", 80)
 	fmt.Println(header)
-	stpl := "%s\t%.2f\t%.2f\t%.2f\t%.2f\t%d\n"
+	stpl := "%-5s\t %-11s\t %-9s\t %-8s\t %-9s\t %-9s\n"
 
 	methods := []string{METHOD_CONNECT, METHOD_WRITE, METHOD_READ, METHOD_TOTAL}
 	res := make(map[string][]float64)
@@ -100,10 +103,14 @@ func printTsResult(tsArr []*TimeMaps) {
 				res[method] = append(res[method], us)
 			}
 		}
-		fmt.Printf(stpl, fmt.Sprintf("%d", index), ts.Used(METHOD_CONNECT), ts.Used(METHOD_WRITE), ts.Used(METHOD_READ), ts.Used(METHOD_TOTAL), ts.statusCode)
+		fmt.Printf(stpl, fmt.Sprintf("%d", index), ts.UsedStr(METHOD_CONNECT), ts.UsedStr(METHOD_WRITE), ts.UsedStr(METHOD_READ), ts.UsedStr(METHOD_TOTAL), fmt.Sprintf("%d", ts.statusCode))
 	}
 
-	fmt.Println("\n" + header)
+	fmt.Println("")
+	fmt.Println(line)
+	fmt.Println("Statis:")
+	fmt.Println(line)
+	fmt.Println(header)
 
 	fns := []*MyFn{
 		NewMyFn("suc", func(fl []float64) float64 {
@@ -133,8 +140,10 @@ func printTsResult(tsArr []*TimeMaps) {
 			myfn.fn([]float64{0})
 			continue
 		}
-		fn := myfn.fn
-		fmt.Printf(stpl, myfn.name, fn(res[METHOD_CONNECT]), fn(res[METHOD_WRITE]), fn(res[METHOD_READ]), fn(res[METHOD_TOTAL]), -1)
+		fn := func(fl []float64) string {
+			return fmt.Sprintf("%.2f", myfn.fn(fl))
+		}
+		fmt.Printf(stpl, myfn.name, fn(res[METHOD_CONNECT]), fn(res[METHOD_WRITE]), fn(res[METHOD_READ]), fn(res[METHOD_TOTAL]), "-1")
 	}
 
 	fmt.Println("")
@@ -249,6 +258,11 @@ func (t TimeMaps) Used(name string) float64 {
 		return ts.Used()
 	}
 	return -1
+}
+
+func (t TimeMaps) UsedStr(name string) string {
+	u := t.Used(name)
+	return fmt.Sprintf("%.2f", u)
 }
 
 type MyTimer struct {
