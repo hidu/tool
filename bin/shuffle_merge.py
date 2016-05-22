@@ -25,13 +25,13 @@ def main():
         print "prefix required"
         sys.exit(2)
         
-    input_fs={}
+    input_fs=[]
     
     for name in args.input_files:
         try:
             fh=open(name,"r")
 #             print("open name:",name)
-            input_fs[name]=fh
+            input_fs.append(fh)
         except IOError, e:
             print e
             sys.exit(2)
@@ -60,14 +60,13 @@ def merge(input_fs,out_fs):
     out_nums=range(0,len(out_fs))
     while len(input_fs)>0:
         for idx in out_nums:
-            for name in input_fs.keys():
-                fh=input_fs[name]
+            for fh in input_fs:
                 line=fh.readline()
                 if line:
                     fh=out_fs[idx]
                     fh.write(line)
                 else:
-                    input_fs.pop(name)
+                    input_fs.remove(fh)
     
 if __name__ == '__main__':
     main()
