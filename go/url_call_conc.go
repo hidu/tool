@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/hidu/go-speed"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,7 +16,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
-	"github.com/hidu/go-speed"
 )
 
 var conc = flag.Uint("c", 10, "Concurrent Num")
@@ -49,10 +49,10 @@ func main() {
 	client = &http.Client{
 		Timeout: timeOut,
 	}
-	speedData=speed.NewSpeed("call",5,func(msg string,sp *speed.Speed){
-		log.Println("speed",msg)
-	});
-	
+	speedData = speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
+		log.Println("speed", msg)
+	})
+
 	var urlStr = strings.TrimSpace(flag.Arg(0))
 
 	jobs = make(chan *http.Request, *conc)
@@ -75,7 +75,7 @@ func main() {
 		}
 	}
 	close(jobs)
-	time.Sleep(timeOut+500*time.Millisecond)
+	time.Sleep(timeOut + 500*time.Millisecond)
 	speedData.Stop()
 	fmt.Println("done,total:", idx)
 }
@@ -171,22 +171,21 @@ func urlCallWorker(jobs <-chan *http.Request) {
 	for req := range jobs {
 		id := atomic.AddUint64(&idx, 1)
 		urlStr := req.URL.String()
-		
-		logData:=[]string{}
-		logData=append(logData,fmt.Sprintf("id=%d %s %s",id,req.Method,urlStr))
+
+		logData := []string{}
+		logData = append(logData, fmt.Sprintf("id=%d %s %s", id, req.Method, urlStr))
 		resp, err := client.Do(req)
-		logData=append(logData,fmt.Sprintf("client_err=%v",err))
-		if(err==nil){
+		logData = append(logData, fmt.Sprintf("client_err=%v", err))
+		if err == nil {
 			defer resp.Body.Close()
 			bd, err := ioutil.ReadAll(resp.Body)
-			logData=append(logData,fmt.Sprintf("http_code=%d blen=%d bd_err=%v",resp.StatusCode,len(bd),err))
-			respStr=string(bd)
+			logData = append(logData, fmt.Sprintf("http_code=%d blen=%d bd_err=%v", resp.StatusCode, len(bd), err))
+			respStr = string(bd)
 		}
 		log.Println(logData)
-		if(!*noResp){
-			fmt.Printf("id=%d\t%d\t%s\n", id, len(respStr),respStr)
+		if !*noResp {
+			fmt.Printf("id=%d\t%d\t%s\n", id, len(respStr), respStr)
 		}
-		speedData.Inc(1,0)
+		speedData.Inc(1, 0)
 	}
 }
-
