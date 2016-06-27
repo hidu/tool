@@ -12,3 +12,4 @@ go build -o ../dest/bin/httptest -ldflags "-s -w"  httptest.go
 go build -o ../dest/bin/urldecode -ldflags "-s -w"  urldecode.go 
 go build -o ../dest/bin/bdlog_kv -ldflags "-s -w"  bdlog_kv.go 
 go build -o ../dest/bin/httpserver4test -ldflags "-s -w"  httpserver4test.go 
+go build -o ../dest/bin/url_call_conc -ldflags "-s -w"  url_call_conc.go
