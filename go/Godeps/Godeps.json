@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/hidu/tool/go",
-	"GoVersion": "go1.5.2",
+	"GoVersion": "go1.6",
 	"Deps": [
 		{
 			"ImportPath": "github.com/beefsack/go-rate",
@@ -16,7 +16,19 @@
 			"Rev": "3dd7008ac1529aca1bcd8a9db75228a71ba23cac"
 		},
 		{
+			"ImportPath": "github.com/hidu/go-speed",
+			"Rev": "4e4dca009ed99147e80bc20a7b4c2ff9ff71821e"
+		},
+		{
 			"ImportPath": "github.com/hidu/goutils",
+			"Rev": "ee2ee06e1fab98420ba500419a9cac952d58e82d"
+		},
+		{
+			"ImportPath": "github.com/hidu/goutils/assest",
+			"Rev": "ee2ee06e1fab98420ba500419a9cac952d58e82d"
+		},
+		{
+			"ImportPath": "github.com/hidu/goutils/jsonutils",
 			"Rev": "ee2ee06e1fab98420ba500419a9cac952d58e82d"
 		},
 		{
