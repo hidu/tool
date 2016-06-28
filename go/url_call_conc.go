@@ -25,7 +25,6 @@ var noResp = flag.Bool("nr", false, "No respose (default false)")
 
 var complex = flag.Bool("complex", false, `Complex input (default false)`)
 
-var client *http.Client
 var idx uint64
 
 var jobs chan *http.Request
@@ -43,12 +42,13 @@ func init() {
 
 var speedData *speed.Speed
 
+var timeOut  time.Duration
+
 func main() {
 	flag.Parse()
-	timeOut := time.Duration(*timeout) * time.Millisecond
-	client = &http.Client{
-		Timeout: timeOut,
-	}
+	timeOut = time.Duration(*timeout) * time.Millisecond
+	
+	
 	speedData = speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
 		log.Println("speed", msg)
 	})
@@ -167,6 +167,9 @@ type Head struct {
 }
 
 func urlCallWorker(jobs <-chan *http.Request) {
+	client:= &http.Client{
+		Timeout: timeOut,
+	}
 	var respStr string
 	for req := range jobs {
 		id := atomic.AddUint64(&idx, 1)
