@@ -18,17 +18,19 @@ import (
 	"time"
 )
 
+var version = "0.1.1 20160715"
+
 var conc = flag.Uint("c", 10, "Concurrent Num")
 var timeout = flag.Int64("t", 800, "Timeout,ms")
 var method = flag.String("method", "GET", "HTTP Method")
 var noResp = flag.Bool("nr", false, "No respose (default false)")
+var ua=flag.String("ua","url_call_conc/"+version,"User-Agent")
 
 var complex = flag.Bool("complex", false, `Complex input (default false)`)
 
 var idx uint64
 
 var jobs chan *http.Request
-var version = "0.1 20160627"
 
 func init() {
 	ua := flag.Usage
@@ -71,6 +73,7 @@ func main() {
 		if err != nil {
 			log.Println(err)
 		} else {
+			req.Header.Set("User-Agent",*ua)
 			jobs <- req
 		}
 	}
@@ -95,6 +98,7 @@ func parseSimpleStdIn() {
 				log.Println("wf:", urlStr, "err:", err)
 				continue
 			}
+			req.Header.Set("User-Agent",*ua)
 			jobs <- req
 		}
 		if err == io.EOF {
@@ -149,7 +153,7 @@ func parseComplexStdIn() {
 		if err != nil {
 			log.Fatalln("wf:", hdObj, "err:", err)
 		}
-
+		req.Header.Set("User-Agent",*ua)
 		if hdObj.Header != nil {
 			for k, v := range hdObj.Header {
 				req.Header.Add(k, v)
