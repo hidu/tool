@@ -18,15 +18,17 @@ import (
 	"time"
 )
 
-var version = "0.1.1 20160715"
+var version = "0.1.1 20160719"
 
 var conc = flag.Uint("c", 10, "Concurrent Num")
 var timeout = flag.Int64("t", 800, "Timeout,ms")
 var method = flag.String("method", "GET", "HTTP Method")
 var noResp = flag.Bool("nr", false, "No respose (default false)")
-var ua=flag.String("ua","url_call_conc/"+version,"User-Agent")
+var ua = flag.String("ua", "url_call_conc/"+version, "User-Agent")
 
 var complex = flag.Bool("complex", false, `Complex input (default false)`)
+
+var v = flag.Bool("version", false, "Version:"+version)
 
 var idx uint64
 
@@ -44,13 +46,16 @@ func init() {
 
 var speedData *speed.Speed
 
-var timeOut  time.Duration
+var timeOut time.Duration
 
 func main() {
 	flag.Parse()
+	if *v {
+		fmt.Println(version)
+		return
+	}
 	timeOut = time.Duration(*timeout) * time.Millisecond
-	
-	
+
 	speedData = speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
 		log.Println("speed", msg)
 	})
@@ -73,7 +78,7 @@ func main() {
 		if err != nil {
 			log.Println(err)
 		} else {
-			req.Header.Set("User-Agent",*ua)
+			req.Header.Set("User-Agent", *ua)
 			jobs <- req
 		}
 	}
@@ -98,7 +103,7 @@ func parseSimpleStdIn() {
 				log.Println("wf:", urlStr, "err:", err)
 				continue
 			}
-			req.Header.Set("User-Agent",*ua)
+			req.Header.Set("User-Agent", *ua)
 			jobs <- req
 		}
 		if err == io.EOF {
@@ -153,7 +158,7 @@ func parseComplexStdIn() {
 		if err != nil {
 			log.Fatalln("wf:", hdObj, "err:", err)
 		}
-		req.Header.Set("User-Agent",*ua)
+		req.Header.Set("User-Agent", *ua)
 		if hdObj.Header != nil {
 			for k, v := range hdObj.Header {
 				req.Header.Add(k, v)
@@ -171,7 +176,7 @@ type Head struct {
 }
 
 func urlCallWorker(jobs <-chan *http.Request) {
-	client:= &http.Client{
+	client := &http.Client{
 		Timeout: timeOut,
 	}
 	var respStr string
