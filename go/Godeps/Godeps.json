@@ -17,19 +17,31 @@
 		},
 		{
 			"ImportPath": "github.com/hidu/go-speed",
-			"Rev": "4e4dca009ed99147e80bc20a7b4c2ff9ff71821e"
+			"Rev": "0f59c1f5ba5460168a413d6f8eb445bcd5e73541"
 		},
 		{
 			"ImportPath": "github.com/hidu/goutils",
-			"Rev": "ee2ee06e1fab98420ba500419a9cac952d58e82d"
+			"Rev": "56596d762b30a9f821e0308f8bdee16340f118f4"
 		},
 		{
 			"ImportPath": "github.com/hidu/goutils/assest",
-			"Rev": "ee2ee06e1fab98420ba500419a9cac952d58e82d"
+			"Rev": "56596d762b30a9f821e0308f8bdee16340f118f4"
+		},
+		{
+			"ImportPath": "github.com/hidu/goutils/fs",
+			"Rev": "56596d762b30a9f821e0308f8bdee16340f118f4"
 		},
 		{
 			"ImportPath": "github.com/hidu/goutils/jsonutils",
-			"Rev": "ee2ee06e1fab98420ba500419a9cac952d58e82d"
+			"Rev": "56596d762b30a9f821e0308f8bdee16340f118f4"
+		},
+		{
+			"ImportPath": "github.com/hidu/goutils/log_util",
+			"Rev": "56596d762b30a9f821e0308f8bdee16340f118f4"
+		},
+		{
+			"ImportPath": "github.com/hidu/goutils/time_util",
+			"Rev": "56596d762b30a9f821e0308f8bdee16340f118f4"
 		},
 		{
 			"ImportPath": "github.com/xeipuuv/gojsonpointer",

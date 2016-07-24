@@ -7,26 +7,29 @@ import (
 	"flag"
 	"fmt"
 	"github.com/hidu/go-speed"
+	"github.com/hidu/goutils/log_util"
 	"io"
 	"io/ioutil"
-	"log"
+	glog "log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
+	"net/url"
 )
 
-var version = "0.1.1 20160719"
+var version = "0.1.2 20160724"
 
 var conc = flag.Uint("c", 10, "Concurrent Num")
-var timeout = flag.Int64("t", 800, "Timeout,ms")
+var timeout = flag.Int64("t", 10000, "Timeout,ms")
 var method = flag.String("method", "GET", "HTTP Method")
-var noResp = flag.Bool("nr", false, "No respose (default false)")
+var noResp = flag.Bool("nr", false, "No Respose (default false)")
 var ua = flag.String("ua", "url_call_conc/"+version, "User-Agent")
+var logPath = flag.String("log", "", "log file prex,default stderr")
 
-var complex = flag.Bool("complex", false, `Complex input (default false)`)
+var complex = flag.Bool("complex", false, `Complex Input (default false)`)
 
 var v = flag.Bool("version", false, "Version:"+version)
 
@@ -47,13 +50,19 @@ func init() {
 var speedData *speed.Speed
 
 var timeOut time.Duration
-
+var log *glog.Logger
 func main() {
 	flag.Parse()
 	if *v {
 		fmt.Println(version)
 		return
 	}
+	log=glog.New(os.Stderr,"",glog.LstdFlags)
+	if(*logPath!=""){
+	   log_util.SetLogFile(log,*logPath,log_util.LOG_TYPE_HOUR)
+	}
+	
+	startTime:=time.Now()
 	timeOut = time.Duration(*timeout) * time.Millisecond
 
 	speedData = speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
@@ -85,7 +94,10 @@ func main() {
 	close(jobs)
 	time.Sleep(timeOut + 500*time.Millisecond)
 	speedData.Stop()
-	fmt.Println("done,total:", idx)
+	
+	timeUsed:=time.Now().Sub(startTime)
+	
+	log.Println("[info]done total:",idx,"used:",timeUsed)
 }
 
 func parseSimpleStdIn() {
@@ -100,7 +112,7 @@ func parseSimpleStdIn() {
 			}
 			req, err := http.NewRequest(strings.ToUpper(*method), urlStr, nil)
 			if err != nil {
-				log.Println("wf:", urlStr, "err:", err)
+				log.Println("[wf]", urlStr, "err:", err)
 				continue
 			}
 			req.Header.Set("User-Agent", *ua)
@@ -110,7 +122,7 @@ func parseSimpleStdIn() {
 			break
 		}
 		if err != nil {
-			log.Println("wf:", string(line), "err:", err)
+			log.Println("[wf]", string(line), "err:", err)
 		}
 	}
 }
@@ -124,7 +136,7 @@ func parseComplexStdIn() {
 		}
 		hl, err := strconv.Atoi(headLen[0 : len(headLen)-1])
 		if err != nil {
-			log.Fatalln("read head length faild:", headLen)
+			log.Fatalln("[fat] read head length faild:", headLen)
 		}
 		headBf := make([]byte, hl)
 		buf.Read(headBf)
@@ -132,16 +144,16 @@ func parseComplexStdIn() {
 		var hdObj *Head
 		err = json.Unmarshal(headBf, &hdObj)
 		if err != nil {
-			log.Fatalln("parse head faild:", headLen)
+			log.Fatalln("[fat] parse head faild:", headLen)
 		}
 
 		bodyLen, err := buf.ReadString('|')
 		if err != nil {
-			log.Fatalln("read body length faild:", err)
+			log.Fatalln("[fat] read body length faild:", err)
 		}
 		bl, err := strconv.Atoi(bodyLen[0 : len(bodyLen)-1])
 		if err != nil {
-			log.Fatalln("parse body length faild:", headLen)
+			log.Fatalln("[fat] parse body length faild:", headLen)
 		}
 
 		var body io.Reader
@@ -156,7 +168,7 @@ func parseComplexStdIn() {
 		}
 		req, err := http.NewRequest(strings.ToUpper(hdObj.Method), hdObj.Url, body)
 		if err != nil {
-			log.Fatalln("wf:", hdObj, "err:", err)
+			log.Fatalln("[wf]", hdObj, "err:", err)
 		}
 		req.Header.Set("User-Agent", *ua)
 		if hdObj.Header != nil {
@@ -180,24 +192,72 @@ func urlCallWorker(jobs <-chan *http.Request) {
 		Timeout: timeOut,
 	}
 	var respStr string
+	var sucNum int
+	lr:=&logRequest{
+		buf:new(bytes.Buffer),
+	}
 	for req := range jobs {
 		id := atomic.AddUint64(&idx, 1)
 		urlStr := req.URL.String()
-
-		logData := []string{}
-		logData = append(logData, fmt.Sprintf("id=%d %s %s", id, req.Method, urlStr))
+		lr.reset()
+		
+		lr.addNotice("id",id)
+		lr.addNotice("method",req.Method)
+		lr.addNotice("url",urlStr)
+		
+		startTime:=time.Now()
 		resp, err := client.Do(req)
-		logData = append(logData, fmt.Sprintf("client_err=%v", err))
+		timeUsed:=time.Now().Sub(startTime)
+		
+		lr.addNotice("used_ms",float64(timeUsed.Nanoseconds())/1e6)
+		
+		lr.addNotice("client_err",err)
 		if err == nil {
+			if(resp.StatusCode==200){
+				sucNum=1
+			}else{
+			 sucNum=0
+			}
 			defer resp.Body.Close()
-			bd, err := ioutil.ReadAll(resp.Body)
-			logData = append(logData, fmt.Sprintf("http_code=%d blen=%d bd_err=%v", resp.StatusCode, len(bd), err))
+			bd, r_err := ioutil.ReadAll(resp.Body)
+			lr.addNotice("http_code",resp.StatusCode)
+			lr.addNotice("resp_len",len(bd))
+			lr.addNotice("resp_err",r_err)
 			respStr = string(bd)
+			if !*noResp {
+				lr.addNotice("resp_body",respStr)
+			}
+			lr.print("info")
+		}else{
+			lr.addNotice("http_code",0)
+			lr.addNotice("resp_len",0)
+			lr.addNotice("resp_err",err)
+			lr.print("wf")
 		}
-		log.Println(logData)
-		if !*noResp {
-			fmt.Printf("id=%d\t%d\t%s\n", id, len(respStr), respStr)
-		}
-		speedData.Inc(1, 0)
+		speedData.Inc(1, len(respStr),sucNum)
 	}
 }
+
+type logRequest struct{
+	buf *bytes.Buffer
+}
+
+func (lr *logRequest)reset(){
+	lr.buf.Reset()
+}
+
+func (lr *logRequest)addNotice(key string,val interface{}){
+	lr.buf.WriteString(key)
+	lr.buf.WriteString("=")
+	if(val==nil){
+		lr.buf.WriteString("nil")
+	}else{
+		lr.buf.WriteString(url.QueryEscape(fmt.Sprintf("%v",val)))
+	}
+	lr.buf.WriteString(" ")
+}
+
+func (lr *logRequest)print(ty string){
+	log.Printf("[%s] %s \n",ty,lr.buf.String())
+}
+
