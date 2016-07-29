@@ -12,12 +12,12 @@ import (
 	"io/ioutil"
 	glog "log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"sync/atomic"
 	"time"
-	"net/url"
 )
 
 var version = "0.1.2 20160724"
@@ -51,18 +51,19 @@ var speedData *speed.Speed
 
 var timeOut time.Duration
 var log *glog.Logger
+
 func main() {
 	flag.Parse()
 	if *v {
 		fmt.Println(version)
 		return
 	}
-	log=glog.New(os.Stderr,"",glog.LstdFlags)
-	if(*logPath!=""){
-	   log_util.SetLogFile(log,*logPath,log_util.LOG_TYPE_HOUR)
+	log = glog.New(os.Stderr, "", glog.LstdFlags)
+	if *logPath != "" {
+		log_util.SetLogFile(log, *logPath, log_util.LOG_TYPE_HOUR)
 	}
-	
-	startTime:=time.Now()
+
+	startTime := time.Now()
 	timeOut = time.Duration(*timeout) * time.Millisecond
 
 	speedData = speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
@@ -94,10 +95,10 @@ func main() {
 	close(jobs)
 	time.Sleep(timeOut + 500*time.Millisecond)
 	speedData.Stop()
-	
-	timeUsed:=time.Now().Sub(startTime)
-	
-	log.Println("[info]done total:",idx,"used:",timeUsed)
+
+	timeUsed := time.Now().Sub(startTime)
+
+	log.Println("[info]done total:", idx, "used:", timeUsed)
 }
 
 func parseSimpleStdIn() {
@@ -193,71 +194,70 @@ func urlCallWorker(jobs <-chan *http.Request) {
 	}
 	var respStr string
 	var sucNum int
-	lr:=&logRequest{
-		buf:new(bytes.Buffer),
+	lr := &logRequest{
+		buf: new(bytes.Buffer),
 	}
 	for req := range jobs {
 		id := atomic.AddUint64(&idx, 1)
 		urlStr := req.URL.String()
 		lr.reset()
-		
-		lr.addNotice("id",id)
-		lr.addNotice("method",req.Method)
-		lr.addNotice("url",urlStr)
-		
-		startTime:=time.Now()
+
+		lr.addNotice("id", id)
+		lr.addNotice("method", req.Method)
+		lr.addNotice("url", urlStr)
+
+		startTime := time.Now()
 		resp, err := client.Do(req)
-		timeUsed:=time.Now().Sub(startTime)
-		
-		lr.addNotice("used_ms",float64(timeUsed.Nanoseconds())/1e6)
-		
-		lr.addNotice("client_err",err)
+		timeUsed := time.Now().Sub(startTime)
+
+		lr.addNotice("used_ms", float64(timeUsed.Nanoseconds())/1e6)
+
+		lr.addNotice("client_err", err)
 		if err == nil {
-			if(resp.StatusCode==200){
-				sucNum=1
-			}else{
-			 sucNum=0
+			if resp.StatusCode == 200 {
+				sucNum = 1
+			} else {
+				sucNum = 0
 			}
 			defer resp.Body.Close()
 			bd, r_err := ioutil.ReadAll(resp.Body)
-			lr.addNotice("http_code",resp.StatusCode)
-			lr.addNotice("resp_len",len(bd))
-			lr.addNotice("resp_err",r_err)
+			lr.addNotice("http_code", resp.StatusCode)
+			lr.addNotice("resp_len", len(bd))
+			lr.addNotice("resp_err", r_err)
 			respStr = string(bd)
 			if !*noResp {
-				lr.addNotice("resp_body",respStr)
+				lr.addNotice("resp_body", respStr)
 			}
 			lr.print("info")
-		}else{
-			lr.addNotice("http_code",0)
-			lr.addNotice("resp_len",0)
-			lr.addNotice("resp_err",err)
+		} else {
+			lr.addNotice("http_code", 0)
+			lr.addNotice("resp_len", 0)
+			lr.addNotice("resp_err", err)
 			lr.print("wf")
 		}
-		speedData.Inc(1, len(respStr),sucNum)
+		speedData.Inc(1, len(respStr), sucNum)
 	}
 }
 
-type logRequest struct{
+type logRequest struct {
 	buf *bytes.Buffer
 }
 
-func (lr *logRequest)reset(){
+func (lr *logRequest) reset() {
 	lr.buf.Reset()
 }
 
-func (lr *logRequest)addNotice(key string,val interface{}){
+func (lr *logRequest) addNotice(key string, val interface{}) {
 	lr.buf.WriteString(key)
 	lr.buf.WriteString("=")
-	if(val==nil){
+	if val == nil {
 		lr.buf.WriteString("nil")
-	}else{
-		lr.buf.WriteString(url.QueryEscape(fmt.Sprintf("%v",val)))
+	} else {
+		lr.buf.WriteString(url.QueryEscape(fmt.Sprintf("%v", val)))
 	}
 	lr.buf.WriteString(" ")
 }
 
-func (lr *logRequest)print(ty string){
-	log.Printf("[%s] %s \n",ty,lr.buf.String())
+func (lr *logRequest) print(ty string) {
+	log.Printf("[%s] %s \n", ty, lr.buf.String())
 }
-

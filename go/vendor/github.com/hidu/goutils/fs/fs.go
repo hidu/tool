@@ -70,7 +70,7 @@ func File_Md5(file_path string) (string, error) {
 func DirCheck(filePath string) error {
 	dir := filepath.Dir(filePath)
 	if !FileExists(dir) {
-		return  os.MkdirAll(dir, 0777)
+		return os.MkdirAll(dir, 0777)
 	}
 	return nil
 }
