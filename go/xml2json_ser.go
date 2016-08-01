@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/clbanning/x2j"
 	"github.com/hidu/goutils/assest"
-	"github.com/hidu/goutils/jsonutils"
+	"github.com/hidu/goutils/json_util"
 	"log"
 	"net/http"
 	"strings"
@@ -91,7 +91,7 @@ func jsonFix(res *Result, jsonStr string, json_schema string) {
 			res.WriteData(2, err.Error(), nil)
 			return
 		}
-		jsonData, err = jsonutils.FixDataWithSchema(jsonData, schema)
+		jsonData, err = json_util.FixDataWithSchema(jsonData, schema)
 		if err != nil {
 			res.WriteData(2, err.Error(), nil)
 			return
@@ -114,7 +114,7 @@ func handleGetXmlJsonSchema(rw http.ResponseWriter, req *http.Request) {
 		res.WriteData(1, err.Error(), nil)
 		return
 	}
-	schema, err := jsonutils.GenJsonSchema(jsonObj)
+	schema, err := json_util.GenJsonSchema(jsonObj)
 	if err != nil {
 		res.WriteData(1, err.Error(), nil)
 		return
@@ -136,7 +136,7 @@ func handleGetJsonJsonSchema(rw http.ResponseWriter, req *http.Request) {
 		res.WriteData(1, err.Error(), nil)
 		return
 	}
-	schema, err := jsonutils.GenJsonSchema(jsonObj)
+	schema, err := json_util.GenJsonSchema(jsonObj)
 	if err != nil {
 		res.WriteData(1, err.Error(), nil)
 		return

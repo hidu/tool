@@ -1,7 +1,7 @@
 /**
 *fix json data with jsonschema
  */
-package jsonutils
+package json_util
 
 import (
 	"fmt"

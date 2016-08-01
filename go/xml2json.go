@@ -5,7 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/clbanning/x2j"
-	"github.com/hidu/goutils/jsonutils"
+	"github.com/hidu/goutils/json_util"
 	"io/ioutil"
 	"log"
 	"os"
@@ -54,7 +54,7 @@ func main() {
 		schema, err := loadJsonFile(*schemaPath)
 		checkErr(err)
 
-		jsonData, err = jsonutils.FixDataWithSchema(jsonData, schema)
+		jsonData, err = json_util.FixDataWithSchema(jsonData, schema)
 		checkErr(err)
 	}
 

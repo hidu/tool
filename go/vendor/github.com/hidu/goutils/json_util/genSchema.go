@@ -1,4 +1,4 @@
-package jsonutils
+package json_util
 
 import (
 	"fmt"

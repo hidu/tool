@@ -17,7 +17,7 @@ import (
 	"encoding/json"
 	"github.com/Shopify/sarama"
 	"github.com/hidu/go-speed"
-	"github.com/hidu/goutils"
+	"github.com/hidu/goutils/object"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -225,7 +225,7 @@ func dealMessage(client *http.Client, msg *sarama.ConsumerMessage, try int) bool
 			logData = append(logData, "resp_json_err:", jsonErr.Error())
 			isSuc = false
 		} else {
-			errno, _ := utils.NewInterfaceWalker(obj).GetString("/errno")
+			errno, _ := object.NewInterfaceWalker(obj).GetString("/errno")
 			logData = append(logData, "resp_errno="+errno)
 			isSuc = errno == "0"
 		}

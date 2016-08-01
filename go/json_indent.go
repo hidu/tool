@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/hidu/goutils"
+	"github.com/hidu/goutils/object"
 	"io"
 	"io/ioutil"
 	"log"
@@ -87,7 +87,7 @@ func indent(json_byte []byte) {
 	}
 
 	if len(fieldNames) != 0 {
-		walker := utils.NewInterfaceWalker(obj)
+		walker := object.NewInterfaceWalker(obj)
 		for _, fieldName := range fieldNames {
 			v, _ := walker.GetString(fieldName)
 			fmt.Printf("%s=%v\t", fieldName, v)
