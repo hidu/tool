@@ -21,20 +21,22 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sync/atomic"
 	"time"
 )
 
+
 var (
-	brokerList = flag.String("brokers", os.Getenv("KAFKA_PEERS"), "The comma separated list of brokers in the Kafka cluster")
-	topic      = flag.String("topic", "", "REQUIRED: the topic to consume")
+	brokerList = flag.String("brokers", os.Getenv("PUSHER_BROKERS"), "The comma separated list of brokers in the Kafka cluster")
+	topic      = flag.String("topic", os.Getenv("PUSHER_TOPIC"), "REQUIRED: the topic to consume")
 	partitions = flag.String("partitions", "all", "The partitions to consume, can be 'all' or comma-separated numbers")
-	offset     = flag.String("offset", "newest", "The offset to start with. Can be `oldest`, `newest`")
+	offset     = flag.Int64("offset", -1, "The offset to start with. Can be -2:oldest, -1:newest")
 	verbose    = flag.Bool("verbose", false, "Whether to turn on sarama logging")
 	//	bufferSize = flag.Int("buffer-size", 256, "The buffer size of the message channel.")
-	httpConsumerUrl      = flag.String("http-con-url", "", "http consumer url")
+	httpConsumerUrl      = flag.String("http-con-url", os.Getenv("PUSHER_HTTP_CON_URL"), "http consumer url")
 	httpConsumerTimeout  = flag.Int("http-con-timeout", 10000, "http consumer timeout,ms")
 	httpConsumerReTryNum = flag.Int("rt", 3, "http consumer retry times")
-	httpConsumerJsonSuc  = flag.Bool("http-check-json", true, `check http consumer response json {"errno":0}`)
+	httpConsumerJsonSuc  = flag.String("http-check-json", "/errno=0", `check http consumer response json {"errno":0}`)
 
 	con = flag.Int("con", 10, "Concurrent Num")
 
@@ -44,6 +46,12 @@ var (
 const User_Agent = "go-kafka-pusher/0.1/hidu"
 
 var speedData *speed.Speed
+
+var HttpConsumerUrls []string
+
+var dealId uint64
+
+var currentOffset int64
 
 func main() {
 	flag.Parse()
@@ -55,41 +63,38 @@ func main() {
 	if *topic == "" {
 		printUsageErrorAndExit("-topic is required")
 	}
-	if *httpConsumerUrl == "" {
-		printUsageErrorAndExit("-http-con-url is required")
-	}
 
-	_, err := url.Parse(*httpConsumerUrl)
-	if err != nil {
-		printUsageErrorAndExit("invalid consumer url")
-	}
+	HttpConsumerUrls = parseConUrlFlag()
 
 	if *verbose {
 		sarama.Logger = logger
 	}
 
+	if *httpConsumerJsonSuc != "" && !strings.Contains(*httpConsumerJsonSuc, "=") {
+		printUsageErrorAndExit(`-http-check-json must contains "="`)
+	}
+
 	speedData = speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
 		logger.Println("[speed]", msg)
 	})
+	
+	currentOffset=*offset
 
-	var initialOffset int64
-	switch *offset {
-	case "oldest":
-		initialOffset = sarama.OffsetOldest
-	case "newest":
-		initialOffset = sarama.OffsetNewest
-	default:
-		printUsageErrorAndExit("-offset should be `oldest` or `newest`")
-	}
-
+start:
 	c, err := sarama.NewConsumer(strings.Split(*brokerList, ","), nil)
 	if err != nil {
-		printErrorAndExit(69, "Failed to start consumer: %s", err)
+		logger.Printf("Failed to start consumer: %s\n", err)
+		time.Sleep(500*time.Millisecond)
+		goto start
 	}
-
+	logger.Println("start consumer success")
 	partitionList, err := getPartitions(c)
 	if err != nil {
-		printErrorAndExit(69, "Failed to get the list of partitions: %s", err)
+		logger.Printf("Failed to get the list of partitions: %s\n", err)
+		
+		c.Close()
+		time.Sleep(500*time.Millisecond)
+		goto start
 	}
 
 	var (
@@ -107,9 +112,12 @@ func main() {
 	}()
 
 	for _, partition := range partitionList {
-		pc, err := c.ConsumePartition(*topic, partition, initialOffset)
+		pc, err := c.ConsumePartition(*topic, partition, currentOffset)
 		if err != nil {
-			printErrorAndExit(69, "Failed to start consumer for partition %d: %s", partition, err)
+			logger.Printf("Failed to start consumer for partition %d: %s\n", partition, err)
+			c.Close()
+			time.Sleep(500*time.Millisecond)
+			goto start
 		}
 
 		go func(pc sarama.PartitionConsumer) {
@@ -132,6 +140,7 @@ func main() {
 				Timeout: time.Duration(*httpConsumerTimeout) * time.Millisecond,
 			}
 			for msg := range messages {
+				currentOffset=msg.Offset
 				subNum := 0
 				for i := 0; i < *httpConsumerReTryNum; i++ {
 					if dealMessage(client, msg, i) {
@@ -154,10 +163,40 @@ func main() {
 	}
 }
 
+
+
+func parseConUrlFlag() []string{
+	if *httpConsumerUrl == "" {
+		printUsageErrorAndExit("-http-con-url is required")
+	}
+	str := strings.Replace(strings.TrimSpace(*httpConsumerUrl), "\n", ";", -1)
+	arr := strings.Split(str, ";")
+	var urls []string
+	for _, line := range arr {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		_, err := url.Parse(line)
+		if err != nil {
+			printUsageErrorAndExit("invalid consumer url:" + line)
+		}
+		urls = append(urls, line)
+	}
+
+	if len(urls) < 1 {
+		printUsageErrorAndExit("-http-con-url is empty")
+	}
+
+	return urls
+}
+
 func dealMessage(client *http.Client, msg *sarama.ConsumerMessage, try int) bool {
+	curDealId := atomic.AddUint64(&dealId, 1)
 	val := string(msg.Value)
 	key := string(msg.Key)
 	logData := []string{
+		fmt.Sprintf("id=%d", curDealId),
 		"info",
 		fmt.Sprintf("try=%d", try),
 		"is_suc=failed",
@@ -171,21 +210,31 @@ func dealMessage(client *http.Client, msg *sarama.ConsumerMessage, try int) bool
 	})()
 
 	if *verbose {
+		fmt.Printf("Partition:\t%d\n", msg.Partition)
+		fmt.Printf("Offset:\t%d\n", msg.Offset)
 		fmt.Printf("Key:\t%s\n", key)
 		fmt.Printf("Value:\t%s\n", val)
 		fmt.Println()
 	}
 	vs := make(url.Values)
 	vs.Add("kafka_key", key)
-	vs.Add("kafka_value", val)
 	vs.Add("kafka_partition", fmt.Sprintf("%d", msg.Partition))
 	vs.Add("kafka_offset", fmt.Sprintf("%d", msg.Offset))
+	qs := vs.Encode()
+	vs.Add("kafka_value", val)
 
 	start := time.Now()
+	urlNew := HttpConsumerUrls[int(curDealId%uint64(len(HttpConsumerUrls)))]
+	if strings.Contains(urlNew, "?") {
+		urlNew = urlNew + "&" + qs
+	} else {
+		urlNew = urlNew + "?" + qs
+	}
 
-	req, reqErr := http.NewRequest("POST", *httpConsumerUrl, bytes.NewReader([]byte(vs.Encode())))
+	req, reqErr := http.NewRequest("POST", urlNew, bytes.NewReader([]byte(vs.Encode())))
+
 	if reqErr != nil {
-		logData[0] = "error"
+		logData[1] = "error"
 		logData = append(logData, "http_build_req_error:", reqErr.Error())
 		return false
 	}
@@ -198,7 +247,7 @@ func dealMessage(client *http.Client, msg *sarama.ConsumerMessage, try int) bool
 
 	logData = append(logData, fmt.Sprintf("used_ms=%d", used.Nanoseconds()/1e6))
 	if err != nil {
-		logData[0] = "error"
+		logData[1] = "error"
 		logData = append(logData, "http_client_error:", err.Error())
 		return false
 	}
@@ -206,7 +255,7 @@ func dealMessage(client *http.Client, msg *sarama.ConsumerMessage, try int) bool
 	bd, respErr := ioutil.ReadAll(resp.Body)
 
 	if respErr != nil {
-		logData[0] = "error"
+		logData[1] = "error"
 		logData = append(logData, "http_read_resp_error:", respErr.Error())
 		return false
 	}
@@ -217,7 +266,7 @@ func dealMessage(client *http.Client, msg *sarama.ConsumerMessage, try int) bool
 		isSuc = false
 	}
 
-	if isSuc && *httpConsumerJsonSuc {
+	if isSuc && *httpConsumerJsonSuc != "" {
 		var obj interface{}
 		jsonErr := json.Unmarshal(bd, &obj)
 		if jsonErr != nil {
@@ -225,14 +274,15 @@ func dealMessage(client *http.Client, msg *sarama.ConsumerMessage, try int) bool
 			logData = append(logData, "resp_json_err:", jsonErr.Error())
 			isSuc = false
 		} else {
-			errno, _ := object.NewInterfaceWalker(obj).GetString("/errno")
+			_info := strings.SplitN(*httpConsumerJsonSuc, "=", 2)
+			errno, _ := object.NewInterfaceWalker(obj).GetString(_info[0])
 			logData = append(logData, "resp_errno="+errno)
-			isSuc = errno == "0"
+			isSuc = errno == _info[1]
 		}
 	}
 
 	if isSuc {
-		logData[2] = "is_suc=suc"
+		logData[3] = "is_suc=suc"
 	}
 
 	logData = append(logData, fmt.Sprintf("resp_len=%d", len(bd)), fmt.Sprintf("resp=%s", url.QueryEscape(string(bd))))
@@ -261,6 +311,7 @@ func getPartitions(c sarama.Consumer) ([]int32, error) {
 func printErrorAndExit(code int, format string, values ...interface{}) {
 	fmt.Fprintf(os.Stderr, "ERROR: %s\n", fmt.Sprintf(format, values...))
 	fmt.Fprintln(os.Stderr)
+	logger.Printf("ERROR: %s\n", fmt.Sprintf(format, values...))
 	os.Exit(code)
 }
 
