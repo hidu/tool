@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+option java_package = "io.grpc.examples";
+
+package kafka;
+
+// The greeting service definition.
+service Agent {
+  // Sends a greeting
+  rpc Send (Request) returns (Reply) {}
+}
+
+// The request message containing the user's name.
+message Request {
+   string topic = 1;
+   bytes key = 2;
+   bytes value = 3;
+   int32 partition  = 4;
+   string logid = 5;
+}
+
+// The response message containing the greetings
+message Reply {
+   int32 partition = 1;
+   int64 offset = 2;
+   int32 errno = 3;
+   string error = 4;
+}
