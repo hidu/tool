@@ -15,7 +15,7 @@ import (
 var version = "0.2 20160902"
 
 var encodeStr = flag.Bool("e", false, "urlencode string")
-var sword = flag.Bool("w", true, "split txt by word")
+var sword = flag.Bool("w", false, "split txt by word")
 
 func init() {
 	ua := flag.Usage
@@ -153,22 +153,8 @@ func QueryUnescape(s []byte) string {
 // We avoid dependency on the unicode package, but check validity of the implementation
 // in the tests.
 func isSpace(r rune) bool {
-	if r <= '\u00FF' {
-		// Obvious ASCII ones: \t through \r plus space. Plus two Latin-1 oddballs.
-		switch r {
-		case ' ', '\t', '\n', '\v', '\f', '\r':
-			return true
-		case '\u0085', '\u00A0':
-			return true
-		}
-		return false
-	}
-	// High-valued ones.
-	if '\u2000' <= r && r <= '\u200a' {
-		return true
-	}
 	switch r {
-	case '\u1680', '\u2028', '\u2029', '\u202f', '\u205f', '\u3000':
+	case ' ', '\t', '\n', '\v', '\f', '\r':
 		return true
 	}
 	return false
