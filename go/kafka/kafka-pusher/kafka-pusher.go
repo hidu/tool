@@ -25,7 +25,6 @@ import (
 	"time"
 )
 
-
 var (
 	brokerList = flag.String("brokers", os.Getenv("PUSHER_BROKERS"), "The comma separated list of brokers in the Kafka cluster")
 	topic      = flag.String("topic", os.Getenv("PUSHER_TOPIC"), "REQUIRED: the topic to consume")
@@ -77,23 +76,23 @@ func main() {
 	speedData = speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
 		logger.Println("[speed]", msg)
 	})
-	
-	currentOffset=*offset
+
+	currentOffset = *offset
 
 start:
 	c, err := sarama.NewConsumer(strings.Split(*brokerList, ","), nil)
 	if err != nil {
 		logger.Printf("Failed to start consumer: %s\n", err)
-		time.Sleep(500*time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		goto start
 	}
 	logger.Println("start consumer success")
 	partitionList, err := getPartitions(c)
 	if err != nil {
 		logger.Printf("Failed to get the list of partitions: %s\n", err)
-		
+
 		c.Close()
-		time.Sleep(500*time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		goto start
 	}
 
@@ -116,7 +115,7 @@ start:
 		if err != nil {
 			logger.Printf("Failed to start consumer for partition %d: %s\n", partition, err)
 			c.Close()
-			time.Sleep(500*time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 			goto start
 		}
 
@@ -140,7 +139,7 @@ start:
 				Timeout: time.Duration(*httpConsumerTimeout) * time.Millisecond,
 			}
 			for msg := range messages {
-				currentOffset=msg.Offset
+				currentOffset = msg.Offset
 				subNum := 0
 				for i := 0; i < *httpConsumerReTryNum; i++ {
 					if dealMessage(client, msg, i) {
@@ -163,9 +162,7 @@ start:
 	}
 }
 
-
-
-func parseConUrlFlag() []string{
+func parseConUrlFlag() []string {
 	if *httpConsumerUrl == "" {
 		printUsageErrorAndExit("-http-con-url is required")
 	}
