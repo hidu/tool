@@ -33,3 +33,9 @@ cat a.log|bdlog_kv -fs http_inpot_post -nokeys|php count.php
 cat url_list.txt|url_call_conc -c 100
 php ../data/url_call_conc_build.php|url_call_conc -c 100 -complex
 ```
+还可以使用配置文件来动态修改运行的并发量(每30秒load一次)：（./url_call_conc.conf）  
+```
+{"conc":100}
+```
+若conc=0 则并发量为0，此时会停止。  
+配置文件位于当前运行目录。

@@ -16,13 +16,14 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
 
-var version = "0.1.2 20160724"
+var version = "0.1.3 20161102"
 
-var conc = flag.Uint("c", 10, "Concurrent Num")
+var conc = flag.Uint("c", 10, "Concurrent Num [conc]")
 var timeout = flag.Int64("t", 10000, "Timeout,ms")
 var method = flag.String("method", "GET", "HTTP Method")
 var noResp = flag.Bool("nr", false, "No Respose (default false)")
@@ -38,10 +39,12 @@ var idx uint64
 var jobs chan *http.Request
 
 func init() {
-	ua := flag.Usage
+	usage := flag.Usage
 	flag.Usage = func() {
-		ua()
+		usage()
 		fmt.Println("\ncat urllist.txt|url_call_conc -c 100")
+		fmt.Println("\n use dynamic conf [ ./url_call_conc.conf ] to change runtime params :")
+		fmt.Println(`{"conc":10}`)
 		fmt.Println("\n site: https://github.com/hidu/tool")
 		fmt.Println(" version:", version)
 	}
@@ -52,17 +55,66 @@ var speedData *speed.Speed
 var timeOut time.Duration
 var log *glog.Logger
 
+var rw sync.RWMutex
+
+type UrlCallConcConf struct {
+	FromFile bool `json:"from_file"`
+	ConcMax  uint `json:"conc"`
+	//    QpsMax  uint `json:"qps"`
+}
+
+var confCur *UrlCallConcConf
+var confLast *UrlCallConcConf
+
+func (c *UrlCallConcConf) String() string {
+	bf, _ := json.Marshal(c)
+	return string(bf)
+}
+
+func getConf() *UrlCallConcConf {
+	conf := &UrlCallConcConf{
+		ConcMax: *conc,
+	}
+	fname := "url_call_conc.conf"
+	bs, err := ioutil.ReadFile(fname)
+	if err != nil {
+		//log.Println("[wf] read_conf failed", fname, "skip,", err.Error())
+	} else {
+		err := json.Unmarshal(bs, &conf)
+		if err != nil {
+			log.Println("[wf] parse_conf ", fname, "failed,skip,", err.Error())
+		} else {
+			conf.FromFile = true
+		}
+	}
+	log.Println("[trace] now_conf is:", conf)
+	return conf
+}
+
+func startWorkers() {
+	if confCur.ConcMax > confLast.ConcMax {
+		log.Println("[trace] startWorkers,last_conc=", confLast.ConcMax, "cur_conc=", confCur.ConcMax)
+		for i := confLast.ConcMax; i < confCur.ConcMax; i++ {
+			go urlCallWorker(jobs, i)
+		}
+	}
+}
+
 func main() {
 	flag.Parse()
 	if *v {
 		fmt.Println(version)
 		return
 	}
+
+	if *ua == "mac" {
+		*ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.1103.21"
+	}
+
 	log = glog.New(os.Stderr, "", glog.LstdFlags)
 	if *logPath != "" {
 		log_util.SetLogFile(log, *logPath, log_util.LOG_TYPE_HOUR)
 	}
-
 	startTime := time.Now()
 	timeOut = time.Duration(*timeout) * time.Millisecond
 
@@ -70,13 +122,32 @@ func main() {
 		log.Println("speed", msg)
 	})
 
+	confCur = getConf()
+	confLast = &UrlCallConcConf{}
+
 	var urlStr = strings.TrimSpace(flag.Arg(0))
 
-	jobs = make(chan *http.Request, *conc)
+	jobs = make(chan *http.Request, 1024)
 
-	for i := 0; i < int(*conc); i++ {
-		go urlCallWorker(jobs)
-	}
+	startWorkers()
+
+	ticker := time.NewTicker(30 * time.Second)
+
+	go func() {
+		for range ticker.C {
+			(func() {
+				confTmp := getConf()
+				if confTmp.String() != confCur.String() {
+					rw.Lock()
+					defer rw.Unlock()
+					confLast = confCur
+					confCur = confTmp
+					startWorkers()
+				}
+			})()
+		}
+	}()
+
 	if urlStr == "" {
 		if *complex {
 			parseComplexStdIn()
@@ -188,7 +259,8 @@ type Head struct {
 	Header map[string]string `json:"header"`
 }
 
-func urlCallWorker(jobs <-chan *http.Request) {
+func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
+	log.Println("[trace] urlCallWorker_start,worker_id=", workerId)
 	client := &http.Client{
 		Timeout: timeOut,
 	}
@@ -203,6 +275,7 @@ func urlCallWorker(jobs <-chan *http.Request) {
 		lr.reset()
 
 		lr.addNotice("id", id)
+		lr.addNotice("worker_id", workerId)
 		lr.addNotice("method", req.Method)
 		lr.addNotice("url", urlStr)
 
@@ -236,6 +309,17 @@ func urlCallWorker(jobs <-chan *http.Request) {
 			lr.print("wf")
 		}
 		speedData.Inc(1, len(respStr), sucNum)
+
+		isOutRange := false
+		(func() {
+			rw.RLock()
+			defer rw.RUnlock()
+			isOutRange = workerId >= confCur.ConcMax
+		})()
+		if isOutRange {
+			log.Println("[trace] urlCallWorker_close,workerId=", workerId)
+			break
+		}
 	}
 }
 
