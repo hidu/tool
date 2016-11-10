@@ -100,6 +100,8 @@ func startWorkers() {
 	}
 }
 
+var workerRunning int64=0
+
 func main() {
 	flag.Parse()
 	if *v {
@@ -164,7 +166,14 @@ func main() {
 		}
 	}
 	close(jobs)
+	
 	time.Sleep(timeOut + 500*time.Millisecond)
+	var num int64=1
+	for num>0{
+		num=atomic.LoadInt64(&workerRunning);
+		log.Println("[trace] e_running_worker_total=",workerRunning,"waiting...")
+		time.Sleep(1*time.Second)
+	}
 	speedData.Stop()
 
 	timeUsed := time.Now().Sub(startTime)
@@ -260,7 +269,13 @@ type Head struct {
 }
 
 func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
-	log.Println("[trace] urlCallWorker_start,worker_id=", workerId)
+	_runningNum:=atomic.AddInt64(&workerRunning, 1)
+	defer func(){
+		num:=atomic.AddInt64(&workerRunning, -1)
+		log.Println("[trace] running_worker_total=",num)
+	}()
+	
+	log.Println("[trace] urlCallWorker_start,worker_id=", workerId,"running_worker_total=",_runningNum)
 	client := &http.Client{
 		Timeout: timeOut,
 	}

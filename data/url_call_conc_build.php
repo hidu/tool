@@ -2,7 +2,7 @@
 /**
  * for url_call_conc
  */
-for($i=0;$i<2000000;$i++){
+for($i=0;$i<200;$i++){
     $hd=array(
         "url"=>"http://127.0.0.1:8000/test/a.php?i=".$i,
         "method"=>"post",
