@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-var version = "0.1.3 20161102"
+var version = "0.1.3 20161114"
 
 var conc = flag.Uint("c", 10, "Concurrent Num [conc]")
 var timeout = flag.Int64("t", 10000, "Timeout,ms")
@@ -29,6 +29,7 @@ var method = flag.String("method", "GET", "HTTP Method")
 var noResp = flag.Bool("nr", false, "No Respose (default false)")
 var ua = flag.String("ua", "url_call_conc/"+version, "User-Agent")
 var logPath = flag.String("log", "", "log file prex,default stderr")
+var start = flag.Int("start", 0, "start item num")
 
 var complex = flag.Bool("complex", false, `Complex Input (default false)`)
 
@@ -60,6 +61,7 @@ var rw sync.RWMutex
 type UrlCallConcConf struct {
 	FromFile bool `json:"from_file"`
 	ConcMax  uint `json:"conc"`
+	Start  uint64 `json:"start"`
 	//    QpsMax  uint `json:"qps"`
 }
 
@@ -74,6 +76,7 @@ func (c *UrlCallConcConf) String() string {
 func getConf() *UrlCallConcConf {
 	conf := &UrlCallConcConf{
 		ConcMax: *conc,
+		Start:uint64(*start),
 	}
 	fname := "url_call_conc.conf"
 	bs, err := ioutil.ReadFile(fname)
@@ -284,6 +287,7 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 	lr := &logRequest{
 		buf: new(bytes.Buffer),
 	}
+	isSkip:=false
 	for req := range jobs {
 		id := atomic.AddUint64(&idx, 1)
 		urlStr := req.URL.String()
@@ -293,6 +297,16 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 		lr.addNotice("worker_id", workerId)
 		lr.addNotice("method", req.Method)
 		lr.addNotice("url", urlStr)
+		
+		(func() {
+			rw.RLock()
+			defer rw.RUnlock()
+			isSkip =confCur.Start >=id
+		})()
+		if isSkip{
+			lr.print("[skip]")
+			continue
+		}
 
 		startTime := time.Now()
 		resp, err := client.Do(req)
