@@ -59,9 +59,9 @@ var log *glog.Logger
 var rw sync.RWMutex
 
 type UrlCallConcConf struct {
-	FromFile bool `json:"from_file"`
-	ConcMax  uint `json:"conc"`
-	Start  uint64 `json:"start"`
+	FromFile bool   `json:"from_file"`
+	ConcMax  uint   `json:"conc"`
+	Start    uint64 `json:"start"`
 	//    QpsMax  uint `json:"qps"`
 }
 
@@ -76,7 +76,7 @@ func (c *UrlCallConcConf) String() string {
 func getConf() *UrlCallConcConf {
 	conf := &UrlCallConcConf{
 		ConcMax: *conc,
-		Start:uint64(*start),
+		Start:   uint64(*start),
 	}
 	fname := "url_call_conc.conf"
 	bs, err := ioutil.ReadFile(fname)
@@ -103,7 +103,7 @@ func startWorkers() {
 	}
 }
 
-var workerRunning int64=0
+var workerRunning int64 = 0
 
 func main() {
 	flag.Parse()
@@ -124,7 +124,8 @@ func main() {
 	timeOut = time.Duration(*timeout) * time.Millisecond
 
 	speedData = speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
-		log.Println("speed", msg)
+		n := atomic.LoadInt64(&workerRunning)
+		log.Println("speed", msg, "running_workers=", n)
 	})
 
 	confCur = getConf()
@@ -169,13 +170,13 @@ func main() {
 		}
 	}
 	close(jobs)
-	
+
 	time.Sleep(timeOut + 500*time.Millisecond)
-	var num int64=1
-	for num>0{
-		num=atomic.LoadInt64(&workerRunning);
-		log.Println("[trace] e_running_worker_total=",workerRunning,"waiting...")
-		time.Sleep(1*time.Second)
+	var num int64 = 1
+	for num > 0 {
+		num = atomic.LoadInt64(&workerRunning)
+		log.Println("[trace] e_running_worker_total=", workerRunning, "waiting...")
+		time.Sleep(1 * time.Second)
 	}
 	speedData.Stop()
 
@@ -272,13 +273,13 @@ type Head struct {
 }
 
 func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
-	_runningNum:=atomic.AddInt64(&workerRunning, 1)
-	defer func(){
-		num:=atomic.AddInt64(&workerRunning, -1)
-		log.Println("[trace] running_worker_total=",num)
+	_runningNum := atomic.AddInt64(&workerRunning, 1)
+	defer func() {
+		num := atomic.AddInt64(&workerRunning, -1)
+		log.Println("[trace] running_worker_total=", num)
 	}()
-	
-	log.Println("[trace] urlCallWorker_start,worker_id=", workerId,"running_worker_total=",_runningNum)
+
+	log.Println("[trace] urlCallWorker_start,worker_id=", workerId, "running_worker_total=", _runningNum)
 	client := &http.Client{
 		Timeout: timeOut,
 	}
@@ -287,7 +288,7 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 	lr := &logRequest{
 		buf: new(bytes.Buffer),
 	}
-	isSkip:=false
+	isSkip := false
 	for req := range jobs {
 		id := atomic.AddUint64(&idx, 1)
 		urlStr := req.URL.String()
@@ -297,13 +298,15 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 		lr.addNotice("worker_id", workerId)
 		lr.addNotice("method", req.Method)
 		lr.addNotice("url", urlStr)
-		
-		(func() {
-			rw.RLock()
-			defer rw.RUnlock()
-			isSkip =confCur.Start >=id
-		})()
-		if isSkip{
+
+		if !isSkip {
+			(func() {
+				rw.RLock()
+				defer rw.RUnlock()
+				isSkip = confCur.Start >= id
+			})()
+		}
+		if isSkip {
 			lr.print("[skip]")
 			continue
 		}
@@ -315,13 +318,17 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 		lr.addNotice("used_ms", float64(timeUsed.Nanoseconds())/1e6)
 
 		lr.addNotice("client_err", err)
+
+		if resp != nil && resp.Body != nil {
+			defer resp.Body.Close()
+		}
+
 		if err == nil {
 			if resp.StatusCode == 200 {
 				sucNum = 1
 			} else {
 				sucNum = 0
 			}
-			defer resp.Body.Close()
 			bd, r_err := ioutil.ReadAll(resp.Body)
 			lr.addNotice("http_code", resp.StatusCode)
 			lr.addNotice("resp_len", len(bd))
