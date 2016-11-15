@@ -21,7 +21,9 @@ import (
 	"time"
 )
 
-var version = "0.1.3 20161114"
+//import _ "net/http/pprof"
+
+var version = "0.1.4 20161115"
 
 var conc = flag.Uint("c", 10, "Concurrent Num [conc]")
 var timeout = flag.Int64("t", 10000, "Timeout,ms")
@@ -115,6 +117,10 @@ func main() {
 	if *ua == "mac" {
 		*ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.1103.21"
 	}
+
+	//	go func() {
+	//		http.ListenAndServe("localhost:6060", nil)
+	//	}()
 
 	log = glog.New(os.Stderr, "", glog.LstdFlags)
 	if *logPath != "" {
@@ -276,7 +282,7 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 	_runningNum := atomic.AddInt64(&workerRunning, 1)
 	defer func() {
 		num := atomic.AddInt64(&workerRunning, -1)
-		log.Println("[trace] running_worker_total=", num)
+		log.Println("[trace] this worker closed,running_worker_total=", num)
 	}()
 
 	log.Println("[trace] urlCallWorker_start,worker_id=", workerId, "running_worker_total=", _runningNum)
@@ -289,7 +295,10 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 		buf: new(bytes.Buffer),
 	}
 	isSkip := false
-	for req := range jobs {
+	isOutRange := false
+	var errOutOfRange = fmt.Errorf("urlCallWorker_OutOfRange")
+
+	var dealRequest = func(req *http.Request) error {
 		id := atomic.AddUint64(&idx, 1)
 		urlStr := req.URL.String()
 		lr.reset()
@@ -303,23 +312,25 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 			rw.RLock()
 			defer rw.RUnlock()
 			isSkip = confCur.Start >= id
+			isOutRange = workerId >= confCur.ConcMax
 		})()
+
 		if isSkip {
 			lr.print("[skip]")
-			continue
+			return nil
 		}
 
 		startTime := time.Now()
 		resp, err := client.Do(req)
 		timeUsed := time.Now().Sub(startTime)
 
-		lr.addNotice("used_ms", float64(timeUsed.Nanoseconds())/1e6)
-
-		lr.addNotice("client_err", err)
-
 		if resp != nil && resp.Body != nil {
 			defer resp.Body.Close()
 		}
+
+		lr.addNotice("used_ms", float64(timeUsed.Nanoseconds())/1e6)
+
+		lr.addNotice("client_err", err)
 
 		if err == nil {
 			if resp.StatusCode == 200 {
@@ -342,16 +353,20 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 			lr.addNotice("resp_err", err)
 			lr.print("wf")
 		}
+
 		speedData.Inc(1, len(respStr), sucNum)
 
-		isOutRange := false
-		(func() {
-			rw.RLock()
-			defer rw.RUnlock()
-			isOutRange = workerId >= confCur.ConcMax
-		})()
 		if isOutRange {
-			log.Println("[trace] urlCallWorker_close,workerId=", workerId)
+			return errOutOfRange
+		}
+		return nil
+	}
+
+	for req := range jobs {
+		err := dealRequest(req)
+
+		if err == errOutOfRange {
+			log.Println("[trace]", err.Error(), "close_worker,workerId=", workerId)
 			break
 		}
 	}
