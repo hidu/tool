@@ -299,13 +299,11 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 		lr.addNotice("method", req.Method)
 		lr.addNotice("url", urlStr)
 
-		if !isSkip {
-			(func() {
-				rw.RLock()
-				defer rw.RUnlock()
-				isSkip = confCur.Start >= id
-			})()
-		}
+		(func() {
+			rw.RLock()
+			defer rw.RUnlock()
+			isSkip = confCur.Start >= id
+		})()
 		if isSkip {
 			lr.print("[skip]")
 			continue
