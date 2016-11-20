@@ -23,7 +23,7 @@ import (
 
 //import _ "net/http/pprof"
 
-var version = "0.1.4 20161115"
+var version = "0.1.5 20161120"
 
 var conc = flag.Uint("c", 10, "Concurrent Num [conc]")
 var timeout = flag.Int64("t", 10000, "Timeout,ms")
@@ -36,6 +36,9 @@ var start = flag.Int("start", 0, "start item num")
 var complex = flag.Bool("complex", false, `Complex Input (default false)`)
 
 var v = flag.Bool("version", false, "Version:"+version)
+
+var flagRetry = flag.Int("retry", 3, "retry times")
+var flagConf = flag.String("conf", "url_call_conc.conf", "dynamic conf")
 
 var idx uint64
 
@@ -61,10 +64,12 @@ var log *glog.Logger
 var rw sync.RWMutex
 
 type UrlCallConcConf struct {
-	FromFile bool   `json:"from_file"`
+	FromFile bool   `json:"-"`
+	Done     bool   `json:"-"`
 	ConcMax  uint   `json:"conc"`
 	Start    uint64 `json:"start"`
-	//    QpsMax  uint `json:"qps"`
+	Retry    int    `json:"retry"`
+	EndID    uint64 `json:"end_id"`
 }
 
 var confCur *UrlCallConcConf
@@ -75,25 +80,49 @@ func (c *UrlCallConcConf) String() string {
 	return string(bf)
 }
 
+func (c *UrlCallConcConf) TryWrite() {
+	if !c.FromFile {
+		return
+	}
+	conf := getConf()
+	if idx > conf.Start {
+		conf.Start = idx
+	}
+	if c.Done {
+		conf.EndID = idx
+		conf.Start = 0
+	}
+	bf, _ := json.MarshalIndent(conf, "", "  ")
+	ioutil.WriteFile(*flagConf, bf, 0666)
+}
+
 func getConf() *UrlCallConcConf {
 	conf := &UrlCallConcConf{
 		ConcMax: *conc,
 		Start:   uint64(*start),
 	}
-	fname := "url_call_conc.conf"
-	bs, err := ioutil.ReadFile(fname)
+	bs, err := ioutil.ReadFile(*flagConf)
 	if err != nil {
 		//log.Println("[wf] read_conf failed", fname, "skip,", err.Error())
 	} else {
 		err := json.Unmarshal(bs, &conf)
 		if err != nil {
-			log.Println("[wf] parse_conf ", fname, "failed,skip,", err.Error())
+			log.Println("[wf] parse_conf ", *flagConf, "failed,skip,", err.Error())
 		} else {
 			conf.FromFile = true
 		}
 	}
+	if conf.Retry < 1 {
+		conf.Retry = *flagRetry
+	}
 	log.Println("[trace] now_conf is:", conf)
 	return conf
+}
+
+func getCurConf() *UrlCallConcConf {
+	rw.RLock()
+	defer rw.RUnlock()
+	return confCur
 }
 
 func startWorkers() {
@@ -126,6 +155,9 @@ func main() {
 	if *logPath != "" {
 		log_util.SetLogFile(log, *logPath, log_util.LOG_TYPE_HOUR)
 	}
+	
+	log.Println("url_call_conc_start-------------------------->")
+	
 	startTime := time.Now()
 	timeOut = time.Duration(*timeout) * time.Millisecond
 
@@ -156,6 +188,7 @@ func main() {
 					confCur = confTmp
 					startWorkers()
 				}
+				confCur.TryWrite()
 			})()
 		}
 	}()
@@ -181,7 +214,7 @@ func main() {
 	var num int64 = 1
 	for num > 0 {
 		num = atomic.LoadInt64(&workerRunning)
-		log.Println("[trace] e_running_worker_total=", workerRunning, "waiting...")
+		log.Println("[trace] running_worker_total=", workerRunning, "waiting...")
 		time.Sleep(1 * time.Second)
 	}
 	speedData.Stop()
@@ -189,6 +222,9 @@ func main() {
 	timeUsed := time.Now().Sub(startTime)
 
 	log.Println("[info]done total:", idx, "used:", timeUsed)
+	confCur.Done = true
+	confCur.TryWrite()
+	log.Println("url_call_conc_finish<=========================")
 }
 
 func parseSimpleStdIn() {
@@ -291,16 +327,18 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 	}
 	var respStr string
 	var sucNum int
-	lr := &logRequest{
-		buf: new(bytes.Buffer),
-	}
+	lr := NewLogRequest()
 	isSkip := false
 	isOutRange := false
 	var errOutOfRange = fmt.Errorf("urlCallWorker_OutOfRange")
-
+	tryTimes := 0
+	var conf *UrlCallConcConf
 	var dealRequest = func(req *http.Request) error {
+		tryTimes = 0
+
 		id := atomic.AddUint64(&idx, 1)
 		urlStr := req.URL.String()
+
 		lr.reset()
 
 		lr.addNotice("id", id)
@@ -308,18 +346,21 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 		lr.addNotice("method", req.Method)
 		lr.addNotice("url", urlStr)
 
-		(func() {
-			rw.RLock()
-			defer rw.RUnlock()
-			isSkip = confCur.Start >= id
-			isOutRange = workerId >= confCur.ConcMax
-		})()
+		conf = getCurConf()
+
+		isSkip = conf.Start >= id
+		isOutRange = workerId >= conf.ConcMax
 
 		if isSkip {
-			lr.print("[skip]")
+			if id%100 == 0 {
+				lr.print("[skip]")
+			}
 			return nil
 		}
 
+	httpClientTry:
+		tryTimes++
+		conf = getCurConf()
 		startTime := time.Now()
 		resp, err := client.Do(req)
 		timeUsed := time.Now().Sub(startTime)
@@ -328,30 +369,42 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 			defer resp.Body.Close()
 		}
 
-		lr.addNotice("used_ms", float64(timeUsed.Nanoseconds())/1e6)
+		lr.addNotice("try", fmt.Sprintf("%d/%d", tryTimes, conf.Retry))
+
+		lr.addNotice("used_ms", fmt.Sprintf("%.3f", float64(timeUsed.Nanoseconds())/1e6))
 
 		lr.addNotice("client_err", err)
-
+		sucNum = 0
 		if err == nil {
 			if resp.StatusCode == 200 {
 				sucNum = 1
-			} else {
-				sucNum = 0
 			}
-			bd, r_err := ioutil.ReadAll(resp.Body)
+
 			lr.addNotice("http_code", resp.StatusCode)
+			bd, r_err := ioutil.ReadAll(resp.Body)
 			lr.addNotice("resp_len", len(bd))
 			lr.addNotice("resp_err", r_err)
 			respStr = string(bd)
 			if !*noResp {
 				lr.addNotice("resp_body", respStr)
 			}
+		} else {
+			lr.addNotice("http_code", nil)
+			lr.addNotice("resp_len", nil)
+			lr.addNotice("resp_err", nil)
+		}
+
+		lr.addNotice("is_suc", sucNum)
+
+		if sucNum > 0 {
 			lr.print("info")
 		} else {
-			lr.addNotice("http_code", 0)
-			lr.addNotice("resp_len", 0)
-			lr.addNotice("resp_err", err)
 			lr.print("wf")
+		}
+
+		if sucNum < 1 && tryTimes < conf.Retry {
+			time.Sleep(1 * time.Second)
+			goto httpClientTry
 		}
 
 		speedData.Inc(1, len(respStr), sucNum)
@@ -373,24 +426,49 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 }
 
 type logRequest struct {
-	buf *bytes.Buffer
+	buf  *bytes.Buffer
+	data map[string]interface{}
+	keys []string
+}
+
+func NewLogRequest() *logRequest {
+	lr := &logRequest{
+		buf: new(bytes.Buffer),
+	}
+	lr.reset()
+	return lr
 }
 
 func (lr *logRequest) reset() {
 	lr.buf.Reset()
+	lr.data = make(map[string]interface{})
+	lr.keys = make([]string, 0, 10)
 }
 
 func (lr *logRequest) addNotice(key string, val interface{}) {
-	lr.buf.WriteString(key)
-	lr.buf.WriteString("=")
 	if val == nil {
-		lr.buf.WriteString("nil")
-	} else {
-		lr.buf.WriteString(url.QueryEscape(fmt.Sprintf("%v", val)))
+		if _, has := lr.data[key]; has {
+			delete(lr.data, key)
+		}
+		return
 	}
-	lr.buf.WriteString(" ")
+	if _, has := lr.data[key]; !has {
+		lr.keys = append(lr.keys, key)
+	}
+	lr.data[key] = val
 }
 
 func (lr *logRequest) print(ty string) {
+	lr.buf.Reset()
+	for _, key := range lr.keys {
+		val, has := lr.data[key]
+		if !has {
+			continue
+		}
+		lr.buf.WriteString(key)
+		lr.buf.WriteString("=")
+		lr.buf.WriteString(url.QueryEscape(fmt.Sprintf("%v", val)))
+		lr.buf.WriteString(" ")
+	}
 	log.Printf("[%s] %s \n", ty, lr.buf.String())
 }

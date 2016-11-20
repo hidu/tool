@@ -21,8 +21,12 @@ func SetLogFile(loger *log.Logger, logPath string, log_type LOG_TYPE) error {
 		if !fs.FileExists(logPathCur) {
 			if logFile != nil {
 				logFile.Close()
+				logFile=nil
 			}
 			fs.DirCheck(logPathCur)
+		}
+		
+		if logFile==nil{
 			logFile, err = os.OpenFile(logPathCur, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 			if err != nil {
 				log.Println("create log file failed [", logPathCur, "]", err)
@@ -34,6 +38,6 @@ func SetLogFile(loger *log.Logger, logPath string, log_type LOG_TYPE) error {
 	checkFile()
 	time_util.SetInterval(func() {
 		checkFile()
-	}, 5)
+	}, 1)
 	return err
 }
