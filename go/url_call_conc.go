@@ -22,7 +22,7 @@ import (
 )
 
 //import _ "net/http/pprof"
-var version = "0.1.5 20161120"
+var version = "0.1.5 20161125"
 
 var conc = flag.Uint("c", 10, "Concurrent Num [conc]")
 var timeout = flag.Int64("t", 10000, "Timeout,ms")
