@@ -22,7 +22,6 @@ import (
 )
 
 //import _ "net/http/pprof"
-
 var version = "0.1.5 20161120"
 
 var conc = flag.Uint("c", 10, "Concurrent Num [conc]")
@@ -127,7 +126,7 @@ func getCurConf() *UrlCallConcConf {
 
 func startWorkers() {
 	if confCur.ConcMax > confLast.ConcMax {
-		log.Println("[trace] startWorkers,last_conc=", confLast.ConcMax, "cur_conc=", confCur.ConcMax)
+		log.Println("[pid=", pid, "][trace] startWorkers,last_conc=", confLast.ConcMax, "cur_conc=", confCur.ConcMax)
 		for i := confLast.ConcMax; i < confCur.ConcMax; i++ {
 			go urlCallWorker(jobs, i)
 		}
@@ -136,12 +135,16 @@ func startWorkers() {
 
 var workerRunning int64 = 0
 
+var pid = 0
+var exitErr error
+
 func main() {
 	flag.Parse()
 	if *v {
 		fmt.Println(version)
 		return
 	}
+	pid = os.Getpid()
 
 	if *ua == "mac" {
 		*ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.1103.21"
@@ -155,23 +158,28 @@ func main() {
 	if *logPath != "" {
 		log_util.SetLogFile(log, *logPath, log_util.LOG_TYPE_HOUR)
 	}
-	
+
 	log.Println("url_call_conc_start-------------------------->")
-	
+
 	startTime := time.Now()
 	timeOut = time.Duration(*timeout) * time.Millisecond
 
+	jobsBufSize := 20
+
+	if int(confCur.ConcMax) > jobsBufSize {
+		jobsBufSize = int(confCur.ConcMax)
+	}
+	jobs = make(chan *http.Request, jobsBufSize)
+
 	speedData = speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
 		n := atomic.LoadInt64(&workerRunning)
-		log.Println("speed", msg, "running_workers=", n)
+		log.Println("speed", msg, "running_workers=", n, "jobs_buf=", len(jobs))
 	})
 
 	confCur = getConf()
 	confLast = &UrlCallConcConf{}
 
 	var urlStr = strings.TrimSpace(flag.Arg(0))
-
-	jobs = make(chan *http.Request, 1024)
 
 	startWorkers()
 
@@ -214,22 +222,26 @@ func main() {
 	var num int64 = 1
 	for num > 0 {
 		num = atomic.LoadInt64(&workerRunning)
-		log.Println("[trace] running_worker_total=", workerRunning, "waiting...")
+		log.Println("[pid=", pid, "][trace] running_worker_total=", workerRunning, "waiting...")
 		time.Sleep(1 * time.Second)
 	}
 	speedData.Stop()
 
 	timeUsed := time.Now().Sub(startTime)
 
-	log.Println("[info]done total:", idx, "used:", timeUsed)
+	log.Println("[pid=", pid, "][info]done total:", idx, "used:", timeUsed)
 	confCur.Done = true
 	confCur.TryWrite()
 	log.Println("url_call_conc_finish<=========================")
+
+	if exitErr != nil {
+		log.Fatalln("exit_with_error:", exitErr)
+	}
 }
 
 func parseSimpleStdIn() {
 	var urlStr string
-	buf := bufio.NewReaderSize(os.Stdin, 81920)
+	buf := bufio.NewReaderSize(os.Stdin, 3000)
 	for {
 		line, err := buf.ReadBytes('\n')
 		if len(line) > 0 {
@@ -255,39 +267,58 @@ func parseSimpleStdIn() {
 }
 
 func parseComplexStdIn() {
-	buf := bufio.NewReaderSize(os.Stdin, 81920)
+	buf := bufio.NewReaderSize(os.Stdin, 1024)
 	for {
 		headLen, err := buf.ReadString('|')
 		if err == io.EOF {
 			break
 		}
-		hl, err := strconv.Atoi(headLen[0 : len(headLen)-1])
+		hlStr := headLen[0 : len(headLen)-1]
+		hl, err := strconv.Atoi(hlStr)
 		if err != nil {
-			log.Fatalln("[fat] read head length faild:", headLen)
+			exitErr = fmt.Errorf("[fat] read head length faild,not int,header_len_str=[%s]", hlStr)
+			log.Println(exitErr)
+			break
 		}
-		headBf := make([]byte, hl)
-		buf.Read(headBf)
+		headBf, err := bufPeed(buf, hl)
+		if err != nil {
+			exitErr = fmt.Errorf("[fat] read header faild,len=%d,head=[%s],err=%s", hl, string(headBf), err.Error())
+			log.Println(exitErr)
+			break
+		}
 
 		var hdObj *Head
 		err = json.Unmarshal(headBf, &hdObj)
 		if err != nil {
-			log.Fatalln("[fat] parse head faild:", headLen)
+			exitErr = fmt.Errorf("[fat] parse head faild:%s", err.Error())
+			log.Println(exitErr)
+			break
 		}
 
 		bodyLen, err := buf.ReadString('|')
 		if err != nil {
-			log.Fatalln("[fat] read body length faild:", err)
+			exitErr = fmt.Errorf("[fat] read body length faild:%s", err.Error())
+			log.Println(exitErr)
+			break
 		}
-		bl, err := strconv.Atoi(bodyLen[0 : len(bodyLen)-1])
+		
+		blStr := bodyLen[0 : len(bodyLen)-1]
+		bl, err := strconv.Atoi(blStr)
 		if err != nil {
-			log.Fatalln("[fat] parse body length faild:", headLen)
+			exitErr = fmt.Errorf("[fat] parse body length faild,str=[%s]", blStr)
+			log.Println(exitErr)
+			break
 		}
 
 		var body io.Reader
 
 		if bl > 0 {
-			bodyBf := make([]byte, bl)
-			buf.Read(bodyBf)
+			bodyBf, err := bufPeed(buf, bl)
+			if err != nil {
+				exitErr = fmt.Errorf("[fat] read body faild:%s", err.Error())
+				log.Println(exitErr)
+				break
+			}
 			body = bytes.NewReader(bodyBf)
 		}
 		if hdObj.Method == "" {
@@ -295,7 +326,8 @@ func parseComplexStdIn() {
 		}
 		req, err := http.NewRequest(strings.ToUpper(hdObj.Method), hdObj.Url, body)
 		if err != nil {
-			log.Fatalln("[wf]", hdObj, "err:", err)
+			exitErr = fmt.Errorf("[fat] build request faild:%s,%v", err.Error(), hdObj)
+			break
 		}
 		req.Header.Set("User-Agent", *ua)
 		if hdObj.Header != nil {
@@ -304,8 +336,23 @@ func parseComplexStdIn() {
 			}
 		}
 
+		buf.ReadByte() //the last \n
+
 		jobs <- req
 	}
+}
+
+func bufPeed(reader *bufio.Reader, n int) ([]byte, error) {
+	bs := make([]byte, n)
+	var err error
+	for i := 0; i < n; i++ {
+		bs[i], err = reader.ReadByte()
+		if err != nil {
+			return bs, err
+		}
+	}
+	return bs, nil
+
 }
 
 type Head struct {
@@ -470,5 +517,5 @@ func (lr *logRequest) print(ty string) {
 		lr.buf.WriteString(url.QueryEscape(fmt.Sprintf("%v", val)))
 		lr.buf.WriteString(" ")
 	}
-	log.Printf("[%s] %s \n", ty, lr.buf.String())
+	log.Printf("[pid=%d][%s] %s \n", pid, ty, lr.buf.String())
 }

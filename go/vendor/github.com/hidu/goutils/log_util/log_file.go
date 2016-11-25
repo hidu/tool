@@ -21,12 +21,12 @@ func SetLogFile(loger *log.Logger, logPath string, log_type LOG_TYPE) error {
 		if !fs.FileExists(logPathCur) {
 			if logFile != nil {
 				logFile.Close()
-				logFile=nil
+				logFile = nil
 			}
 			fs.DirCheck(logPathCur)
 		}
-		
-		if logFile==nil{
+
+		if logFile == nil {
 			logFile, err = os.OpenFile(logPathCur, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 			if err != nil {
 				log.Println("create log file failed [", logPathCur, "]", err)
