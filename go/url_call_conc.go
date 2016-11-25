@@ -161,6 +161,9 @@ func main() {
 
 	log.Println("url_call_conc_start-------------------------->")
 
+	confCur = getConf()
+	confLast = &UrlCallConcConf{}
+	
 	startTime := time.Now()
 	timeOut = time.Duration(*timeout) * time.Millisecond
 
@@ -176,8 +179,7 @@ func main() {
 		log.Println("speed", msg, "running_workers=", n, "jobs_buf=", len(jobs))
 	})
 
-	confCur = getConf()
-	confLast = &UrlCallConcConf{}
+
 
 	var urlStr = strings.TrimSpace(flag.Arg(0))
 
