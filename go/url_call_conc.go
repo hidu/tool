@@ -163,7 +163,7 @@ func main() {
 
 	confCur = getConf()
 	confLast = &UrlCallConcConf{}
-	
+
 	startTime := time.Now()
 	timeOut = time.Duration(*timeout) * time.Millisecond
 
@@ -178,8 +178,6 @@ func main() {
 		n := atomic.LoadInt64(&workerRunning)
 		log.Println("speed", msg, "running_workers=", n, "jobs_buf=", len(jobs))
 	})
-
-
 
 	var urlStr = strings.TrimSpace(flag.Arg(0))
 
@@ -303,7 +301,7 @@ func parseComplexStdIn() {
 			log.Println(exitErr)
 			break
 		}
-		
+
 		blStr := bodyLen[0 : len(bodyLen)-1]
 		bl, err := strconv.Atoi(blStr)
 		if err != nil {
