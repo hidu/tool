@@ -136,6 +136,10 @@ func (item *DataItem) String() string {
 	return string(hd) + "\n" + string(bd) + "\n"
 }
 
+func (item *DataItem) UniqID() string {
+	return fmt.Sprintf("%s|%s|%s", item.Index,item.Type,item.ID)
+}
+
 type ScrollResult struct {
 	ScrollID string `json:"_scroll_id"`
 	Token    int    `json:"took"`
@@ -229,8 +233,29 @@ func reIndex(conf *Config) {
 	}
 }
 
+
+type BulkResult struct{
+	Took uint64  `json:"took"`
+	Errors bool `json:"errors"`
+	Items []map[string]*BulkResultItem `json:"items"`
+}
+type BulkResultItem struct{
+	Index string `json:"_index"`
+	Type string `json:"_type"`
+	Id string `json:"_id"`
+	Version uint64 `json:"_version"`
+	Status int `json:"status"`
+	Error string `json:"error"`
+}
+
+func (bri *BulkResultItem)UniqID()string{
+	return fmt.Sprintf("%s|%s|%s", bri.Index,bri.Type,bri.Id)
+	
+}
+
 func reBulk(client *http.Client, conf *Config, scrollResult *ScrollResult) {
 	var datas []string
+	datas_map:=make(map[string]string)
 	for _, item := range scrollResult.Hits.Hits {
 		item.Index = conf.NewIndex.Index
 
@@ -247,7 +272,9 @@ func reBulk(client *http.Client, conf *Config, scrollResult *ScrollResult) {
 		}
 
 		if !conf.sameIndex || _hasChange {
-			datas = append(datas, item.String())
+			str:=item.String()
+			datas_map[item.UniqID()]=str
+			datas = append(datas, str)
 		}
 	}
 
@@ -268,5 +295,29 @@ func reBulk(client *http.Client, conf *Config, scrollResult *ScrollResult) {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	checkErr("bulk failed", err)
-	log.Println("bulk resp:", string(body))
+	
+	var br *BulkResult
+	err = json.Unmarshal(body, &br)
+	checkErr("parse bulk resp failed:", err)
+	
+//	log.Println("bulk resp:", string(body))
+	
+	if br.Errors{
+		log.Println("buil resp has error")
+	}else{
+		log.Println("buil all success")
+	}
+//	t,_:=json.Marshal(br)
+//	fmt.Println("br",string(t))
+	for _,data:=range br.Items{
+		if item,has:=data["index"];has{
+			_id:=item.UniqID()
+			if item.Error!=""{
+				_raw,_:=datas_map[_id]
+				log.Println("err,",_id,item.Error,"raw:",strings.TrimSpace(_raw))
+			}else{
+				log.Println("suc,",_id,item.Status)
+			}
+		}
+	}
 }
