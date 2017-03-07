@@ -189,7 +189,7 @@ func reIndex(conf *Config) {
 	checkErr("scan failed,result is :"+string(body), err)
 
 	if scanResult.Hits.Total < 1 {
-		log.Println("no result,done")
+		log.Println("no result,done,result is:"+string(body))
 		return
 	}
 	scroll_id := scanResult.ScrollID
