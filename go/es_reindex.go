@@ -198,7 +198,6 @@ func reIndex(conf *Config) {
 	}
 	scroll_id := scanResult.ScrollID
 
-	var scrollResult *ScrollResult
 
 	for {
 		urlScroll := req.URL.Scheme + "://" + req.URL.Host + "/_search/scroll?scroll=" + conf.ScanTime
@@ -214,6 +213,8 @@ func reIndex(conf *Config) {
 
 		body, err := ioutil.ReadAll(resp.Body)
 		checkErr("scroll failed", err)
+	
+		var scrollResult *ScrollResult
 
 		err = json.Unmarshal(body, &scrollResult)
 		checkErr("scroll failed,result is :"+string(body), err)
