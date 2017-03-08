@@ -64,7 +64,9 @@ func readConf(conf_name string) (*Config, error) {
 		return nil, err
 	}
 	var conf *Config
-	err = json.Unmarshal(bs, &conf)
+	dec := json.NewDecoder(bytes.NewReader(bs))
+	dec.UseNumber()
+	err = dec.Decode(&conf)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +218,10 @@ func reIndex(conf *Config) {
 	
 		var scrollResult *ScrollResult
 
-		err = json.Unmarshal(body, &scrollResult)
+		dec := json.NewDecoder(bytes.NewReader(body))
+		dec.UseNumber()
+		err=dec.Decode(&scrollResult)
+//		err = json.Unmarshal(body, &scrollResult)
 		checkErr("scroll failed,result is :"+string(body), err)
 
 		scroll_speed.Inc(len(scrollResult.Hits.Hits), len(body), 1)
