@@ -43,7 +43,10 @@ var conf_name = flag.String("conf", "es_reindex.json", "reindex config file name
 var loop_sleep = flag.Int64("loop_sleep", 0, "each loop sleep time")
 
 var scroll_speed = speed.NewSpeed("scroll", 5, func(msg string, sp *speed.Speed) {
-	log.Println("speed", msg)
+	log.Println("scroll_speed", msg)
+})
+var bulk_speed = speed.NewSpeed("bulk", 5, func(msg string, sp *speed.Speed) {
+	log.Println("bulk_speed", msg)
 })
 
 func main() {
@@ -316,14 +319,19 @@ func reBulk(client *http.Client, conf *Config, scrollResult *ScrollResult) {
 //	t,_:=json.Marshal(br)
 //	fmt.Println("br",string(t))
 	for _,data:=range br.Items{
+		_size:=0
+		_suc_num:=0
 		if item,has:=data["index"];has{
 			_id:=item.UniqID()
+			_raw,_:=datas_map[_id]
+			_size=len(_raw)
 			if item.Error!=""{
-				_raw,_:=datas_map[_id]
 				log.Println("err,",_id,item.Error,"raw:",strings.TrimSpace(_raw))
 			}else{
 				log.Println("suc,",_id,item.Status)
+				_suc_num=1
 			}
 		}
+		bulk_speed.Inc(1, _size, _suc_num)
 	}
 }
