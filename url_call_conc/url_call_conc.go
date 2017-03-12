@@ -174,7 +174,7 @@ func main() {
 	}
 	jobs = make(chan *http.Request, jobsBufSize)
 
-	speedData = speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
+	speedData = speed.NewSpeed("url_call_cocc", 5, func(msg string) {
 		n := atomic.LoadInt64(&workerRunning)
 		log.Println("speed", msg, "running_workers=", n, "jobs_buf=", len(jobs))
 	})
@@ -444,8 +444,11 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 		lr.addNotice("is_suc", sucNum)
 
 		if sucNum > 0 {
+			speedData.Success("request", 1)
+			speedData.Success("resp_size", len(respStr))
 			lr.print("info")
 		} else {
+			speedData.Fail("request", 1)
 			lr.print("wf")
 		}
 
@@ -453,8 +456,6 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 			time.Sleep(1 * time.Second)
 			goto httpClientTry
 		}
-
-		speedData.Inc(1, len(respStr), sucNum)
 
 		if isOutRange {
 			return errOutOfRange
