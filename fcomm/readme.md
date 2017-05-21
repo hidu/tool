@@ -5,13 +5,18 @@
 文件a的一列(a.m) 和文件b的一列(b.n)做对比（前提：两文件已经按照上述a.m 以及 b.n 排序为有序）,比对出 `a.m 包含在b.n中` 或者 `a.m不包含在b.n 中`。
 
 ## 2.示例
+```
+$ fcomm -fac 0 -fbc 0 a.sort b.sort
+```
+
 <table>
     <tr>
-        <td>文件a</td>
-         <td>文件b</td>
+        <td>a.sort</td>
+         <td>b.sort</td>
+         <td>result</td>
     </tr>
     <tr>
-        <td><pre>1  a
+        <td valign=top><pre>1  a
 1   b
 10  f
 100 r
@@ -30,7 +35,7 @@
 99  s
 99  t</pre>
 </td>
-        <td><pre>1  2
+        <td valign=top><pre>1  2
 1   w
 100 3
 2   2
@@ -44,17 +49,8 @@
 6   3
 8   3
 99  3</pre></td>
-    </tr>
-</table>
-
-```
-$ fcomm -fac 0 -fbc 0 a.sort b.sort
-```
-输出
-
-
-```
-1   a
+<td valign=top>
+<pre>1   a
 1   b
 100 r
 2   c
@@ -65,4 +61,9 @@ $ fcomm -fac 0 -fbc 0 a.sort b.sort
 8   h
 99  s
 99  t
-```
+</pre>
+</td>
+    </tr>
+</table>
+
+
