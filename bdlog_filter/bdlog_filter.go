@@ -23,6 +23,34 @@ type CondItem struct {
 	Val float64
 }
 
+func (cond *CondItem) Match(val float64) bool {
+	match := false
+	switch cond.Op {
+	case ">":
+		match = val > cond.Val
+		break
+	case ">=":
+		match = val >= cond.Val
+		break
+	case "<":
+		match = val < cond.Val
+		break
+	case "<=":
+		match = val <= cond.Val
+		break
+	case "=":
+		match = val == cond.Val
+		break
+	case "<>":
+		match = val != cond.Val
+		break
+	default:
+		log.Println("not support operate:", cond.Op)
+		break
+	}
+	return match
+}
+
 func init() {
 	ua := flag.Usage
 	flag.Usage = func() {
@@ -51,7 +79,7 @@ func main() {
 }
 
 func parseConds(condStr string) (*CondItem, error) {
-	r := regexp.MustCompile(`(\w+)([><=]+)(\d+(.\d+)?)`)
+	r := regexp.MustCompile(`(\w+)([><=]{1,2})(\d+(.\d+)?)`)
 	m := r.FindStringSubmatch(condStr)
 	//["a>=4.0" "a" ">=" "4.0" ".0"]
 	if len(m) < 3 {
@@ -89,29 +117,8 @@ func printLine(line []byte) {
 		return
 	}
 	v_f, _ := strconv.ParseFloat(kv.get(cond.Key), 64)
-	match := false
-	switch cond.Op {
-	case ">":
-		match = v_f > cond.Val
-		break
-	case ">=":
-		match = v_f >= cond.Val
-		break
-	case "<":
-		match = v_f < cond.Val
-		break
-	case "<=":
-		match = v_f <= cond.Val
-		break
-	case "=":
-		match = v_f == cond.Val
-		break
-	default:
-		log.Println("not support operate:", cond.Op)
-		break
-	}
 
-	if match {
+	if cond.Match(v_f) {
 		fmt.Print(string(line))
 	}
 }
