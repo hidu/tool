@@ -56,7 +56,8 @@ select a.* from a where a.1 in (select b.1 from b)
 99  s
 99  t</pre>
 </td>
-        <td valign=top><pre>1  2
+<td valign=top>
+<pre>1  2
 1   w
 100 3
 2   2
@@ -72,7 +73,7 @@ select a.* from a where a.1 in (select b.1 from b)
 99  3</pre>
 </td>
 <td valign=top>
-<pre>1   a
+<pre>1  a
 1   b
 100 r
 2   c
@@ -101,7 +102,7 @@ select a.* from a where a.1 not in (select b.1 from b)
 <tr><td>a.sort</td><td>b.sort</td><td>result</td></tr>
 <tr>
 <td valign=top>
-<pre>1a
+<pre>1 a
 1   b
 10  f
 100 r
@@ -137,15 +138,12 @@ select a.* from a where a.1 not in (select b.1 from b)
 99  3</pre>
 </td>
 <td valign=top>
-<pre>1  a
-10  f
+<pre>10 f
 11  e
 11  e
 11  q
 12  e
 13  f
-5   e
-8   f
 9   h
 </pre>
 </td>
@@ -156,10 +154,12 @@ select a.* from a where a.1 not in (select b.1 from b)
 ```bash
 $ fcomm -fac 1 -fbc 1 -concat_b a.sort b.sort
 ```
-相当于
+大致相当于
 ```sql
-select a.*,b.* from a where a.1 in (select b.1 from b)
+select a.match_line,b.first_match_line from a where a.1 in (select b.1 from b)
 ```
+匹配行数 不是 a * b，而是等于所有a匹配的行数。
+
 
 <table>
 <tr><td>a.sort</td><td>b.sort</td><td>result</td></tr>

@@ -187,7 +187,7 @@ func main() {
 
 	var lastC int
 
-	debugFormat := "COMPARE: %s | %10s | c= %d %s\n"
+	debugFormat := "COMPARE: %s | <%10s> | c= % d %s\n"
 
 	isBFinish := false
 
@@ -222,7 +222,7 @@ func main() {
 					bLastEqA = bLastGtA
 					bLastGtA = nil
 					continue
-				} else if c < 0 {
+				} else if c == -1 { //a < bLastGtA
 					compareAndPrint(a, false, nil)
 					continue
 				} else {
@@ -236,6 +236,7 @@ func main() {
 						if b.Empty() {
 							continue
 						}
+
 						if bLast != nil && b.Compare(bLast) == 0 {
 							continue
 						}
@@ -250,17 +251,20 @@ func main() {
 						if c == 0 {
 							compareAndPrint(a, true, b)
 							bLastEqA = b
-						} else if c < 0 {
-							if bLastGtA == nil {
+							bLastGtA = nil
+						} else if c == -1 { //a < b
+							if bLastGtA == nil && bLastEqA == nil {
 								compareAndPrint(a, false, nil)
 							}
 							bLastGtA = b
+							//							bLastEqA = nil
 							break
-						} else {
-							bLastGtA = nil
-							if lastC < 0 && aLast != nil {
+						} else { // now c == 1 a > b
+							if lastC < 0 && aLast != nil && bLastGtA == nil {
 								compareAndPrint(aLast, false, nil)
 							}
+							bLastEqA = nil
+							bLastGtA = nil
 						}
 						bLast = b
 					} else {
