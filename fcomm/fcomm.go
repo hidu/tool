@@ -10,18 +10,19 @@ import (
 	"strings"
 )
 
-var leftFieldId = flag.Int("fac", -1, "file_a column id;-1:all line")
+var leftFieldId = flag.Uint("fac", 0, "file_a's column id to compare. 0:all line(default),1:1st,2:2nd ...")
 var leftFieldSep = flag.String("fas", "\t", "file_a field separator")
 
-var rightFieldId = flag.Int("fbc", -1, "file_b column id;-1:all line")
+var rightFieldId = flag.Uint("fbc", 0, "file_b's column id to compare. 0:all line(default),1:1st,2:2nd ...")
 var rightFieldSep = flag.String("fbs", "\t", "file_b field separator")
 
 var fileAInFileB = flag.Bool("a_in_b", true, "file_a must in file_b")
+var concatBLine = flag.Bool("concat_b", false, "when a_in_b=ture,concat file b's line")
 
 var debug = flag.Bool("debug", false, "debug")
 var reverse = flag.Bool("r", false, "file is reverse sort")
-var number = flag.Bool("number", false, "compare column is sorted number")
-var version = "20170521 0.1"
+var number = flag.Bool("number", false, "compare as numbers")
+var version = "20170528 0.1.1"
 
 func init() {
 	usage := flag.Usage
@@ -39,13 +40,13 @@ type CommFile struct {
 	File *os.File
 	//use which field to comp,-1:all line
 	BufLine        chan *FileLine
-	FieldID        int
+	FieldID        int //-1:all line,
 	FieldSeparator string
 	LastLine       *FileLine
 	LastLines      map[string]*FileLine
 }
 
-func NewCommFile(name string, fieldId int, fieldSep string) (*CommFile, error) {
+func NewCommFile(name string, fieldId uint, fieldSep string) (*CommFile, error) {
 	if name == "" {
 		return nil, fmt.Errorf("name is empty")
 	}
@@ -57,7 +58,7 @@ func NewCommFile(name string, fieldId int, fieldSep string) (*CommFile, error) {
 	cf := &CommFile{
 		Name:           name,
 		File:           f,
-		FieldID:        fieldId,
+		FieldID:        int(fieldId) - 1,
 		FieldSeparator: fieldSep,
 		BufLine:        make(chan *FileLine, 100),
 	}
@@ -97,10 +98,11 @@ func (f *CommFile) Next() (*FileLine, bool) {
 }
 
 type FileLine struct {
-	Line   string
-	LineNo int64
-	Raw    string
-	IsRaw  bool
+	Line     string
+	NumValue float64
+	LineNo   int64
+	Raw      string
+	IsRaw    bool
 }
 
 func NewFileLine(raw string, lineNo int64, fieldId int, fieldSep string) (*FileLine, error) {
@@ -118,6 +120,13 @@ func NewFileLine(raw string, lineNo int64, fieldId int, fieldSep string) (*FileL
 		} else {
 			return nil, fmt.Errorf("lineNo=%d,line=[%s] error", lineNo, raw)
 		}
+		if *number {
+			v, err := strconv.ParseFloat(fl.Line, 64)
+			if err != nil {
+				return nil, err
+			}
+			fl.NumValue = v
+		}
 		fl.Raw = raw
 	}
 	return fl, nil
@@ -125,11 +134,9 @@ func NewFileLine(raw string, lineNo int64, fieldId int, fieldSep string) (*FileL
 
 func (l *FileLine) Compare(other *FileLine) (v int) {
 	if *number {
-		a, _ := strconv.ParseFloat(l.Line, 64)
-		b, _ := strconv.ParseFloat(other.Line, 64)
-		if a == b {
+		if l.NumValue == other.NumValue {
 			v = 0
-		} else if a > b {
+		} else if l.NumValue > other.NumValue {
 			v = 1
 		} else {
 			v = -1
@@ -181,6 +188,9 @@ func main() {
 	var lastC int
 
 	debugFormat := "COMPARE: %s | %10s | c= %d %s\n"
+
+	isBFinish := false
+
 	//假设数据全部递增
 	for {
 		if a, aok := left.Next(); aok {
@@ -194,7 +204,7 @@ func main() {
 				}
 				lastC = c
 				if c == 0 {
-					compareAndPrint(a, true)
+					compareAndPrint(a, true, bLastEqA)
 					continue
 				} else if c > 0 {
 					bLastEqA = nil
@@ -208,50 +218,59 @@ func main() {
 				}
 				lastC = c
 				if c == 0 {
-					compareAndPrint(a, true)
+					compareAndPrint(a, true, bLastGtA)
 					bLastEqA = bLastGtA
 					bLastGtA = nil
 					continue
 				} else if c < 0 {
-					compareAndPrint(a, false)
+					compareAndPrint(a, false, nil)
 					continue
 				} else {
 					bLastGtA = nil
 				}
 			}
 
-			for {
-				if b, bok := right.Next(); bok {
-					if b.Empty() {
-						continue
-					}
-					if bLast != nil && b.Compare(bLast) == 0 {
-						continue
-					}
-
-					c := a.Compare(b)
-
-					if *debug {
-						fmt.Printf(debugFormat, a, "b", c, b)
-					}
-
-					lastC = c
-					if c == 0 {
-						compareAndPrint(a, true)
-						bLastEqA = b
-					} else if c < 0 {
-						bLastGtA = b
-						break
-					} else {
-						bLastGtA = nil
-						if lastC < 0 && aLast != nil {
-							compareAndPrint(aLast, false)
+			if !isBFinish {
+				for {
+					if b, bok := right.Next(); bok {
+						if b.Empty() {
+							continue
 						}
+						if bLast != nil && b.Compare(bLast) == 0 {
+							continue
+						}
+
+						c := a.Compare(b)
+
+						if *debug {
+							fmt.Printf(debugFormat, a, "b", c, b)
+						}
+
+						lastC = c
+						if c == 0 {
+							compareAndPrint(a, true, b)
+							bLastEqA = b
+						} else if c < 0 {
+							if bLastGtA == nil {
+								compareAndPrint(a, false, nil)
+							}
+							bLastGtA = b
+							break
+						} else {
+							bLastGtA = nil
+							if lastC < 0 && aLast != nil {
+								compareAndPrint(aLast, false, nil)
+							}
+						}
+						bLast = b
+					} else {
+						isBFinish = true
+						compareAndPrint(a, false, nil)
+						break
 					}
-					bLast = b
-				} else {
-					break
 				}
+			} else {
+				compareAndPrint(a, false, nil)
 			}
 
 			aLast = a
@@ -265,10 +284,14 @@ func main() {
 	}
 }
 
-func compareAndPrint(a *FileLine, inBFile bool) {
+func compareAndPrint(a *FileLine, inBFile bool, b *FileLine) {
 	if *fileAInFileB {
 		if inBFile {
-			fmt.Println(a)
+			if *concatBLine {
+				fmt.Println(a, *leftFieldSep, b)
+			} else {
+				fmt.Println(a)
+			}
 		}
 	} else {
 		if !inBFile {
