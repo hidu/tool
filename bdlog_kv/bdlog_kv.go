@@ -15,6 +15,7 @@ var fields = flag.String("fs", "", "field names,eg:logid,uid")
 var notShowKeys = flag.Bool("nokeys", false, "don't show keys")
 var separator = flag.String("sep", "\t", "print split str")
 var asJson = flag.Bool("json", false, "output as json")
+var oldFormat = flag.Bool("old", false, "is old log format")
 
 var printHeader = flag.Bool("h", false, "print header")
 
@@ -120,6 +121,33 @@ var kvSpace = []byte(" ")
 var eqSign = []byte("=")
 
 func parseLine(line []byte) logKv {
+	m := bytes.LastIndex(line, startKey)
+	if m < 1 {
+		return nil
+	}
+	n := bytes.LastIndex(line, stopKey)
+	if n < m {
+		return nil
+	}
+	kv := make(logKv)
+
+	sub := line[m+1 : n]
+	items := bytes.Split(sub, kvSpace)
+
+	for _, item := range items {
+		x := bytes.Index(item, eqSign)
+		if x < 1 {
+			continue
+		}
+		key := string(item[:x])
+		val := string(item[x+1:])
+		kv[key] = val
+	}
+
+	return kv
+}
+
+func parseLineOldFormat(line []byte) logKv {
 	m := bytes.LastIndex(line, startKey)
 	if m < 1 {
 		return nil

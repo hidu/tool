@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-var version = "0.1 20171210"
+var version = "0.2 20190217"
 
 var k = flag.Int("k", 0, "count QPS via a key")
 var v = flag.Int("v", 0, "count QPS via a value,the value must be a int")
@@ -105,7 +105,9 @@ func (q *QPSCount) Print(str string) {
 	r := regexp.MustCompile(`,\(suc:[^\)]+\),\(fail:[^\)]+\)`)
 	str = r.ReplaceAllString(str, "")
 	p := strings.Index(str, "LINE_all")
-	str = str[p:]
+	if p>-1{
+		str = str[p:]
+	}
 	arr := strings.Split(str, ";")
 	h_m_l := 0
 	var infos [][]string
@@ -123,7 +125,9 @@ func (q *QPSCount) Print(str string) {
 		if h_l > h_m_l {
 			h_m_l = h_l
 		}
-		tmp[1] = strings.Replace(tmp[1], "total", "", -1)
+		if len(tmp)>1{
+			tmp[1] = strings.Replace(tmp[1], "total", "", -1)
+		}
 
 		infos = append(infos, tmp)
 	}
