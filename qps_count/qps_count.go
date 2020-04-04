@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"github.com/hidu/go-speed"
 	"io"
 	"os"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/hidu/go-speed"
 )
 
 var version = "0.2 20190217"
@@ -105,7 +106,7 @@ func (q *QPSCount) Print(str string) {
 	r := regexp.MustCompile(`,\(suc:[^\)]+\),\(fail:[^\)]+\)`)
 	str = r.ReplaceAllString(str, "")
 	p := strings.Index(str, "LINE_all")
-	if p>-1{
+	if p > -1 {
 		str = str[p:]
 	}
 	arr := strings.Split(str, ";")
@@ -125,7 +126,7 @@ func (q *QPSCount) Print(str string) {
 		if h_l > h_m_l {
 			h_m_l = h_l
 		}
-		if len(tmp)>1{
+		if len(tmp) > 1 {
 			tmp[1] = strings.Replace(tmp[1], "total", "", -1)
 		}
 

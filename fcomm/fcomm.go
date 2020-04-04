@@ -38,9 +38,9 @@ func init() {
 type CommFile struct {
 	Name string
 	File *os.File
-	//use which field to comp,-1:all line
+	// use which field to comp,-1:all line
 	BufLine        chan *FileLine
-	FieldID        int //-1:all line,
+	FieldID        int // -1:all line,
 	FieldSeparator string
 	LastLine       *FileLine
 	LastLines      map[string]*FileLine
@@ -191,7 +191,7 @@ func main() {
 
 	isBFinish := false
 
-	//假设数据全部递增
+	// 假设数据全部递增
 	for {
 		if a, aok := left.Next(); aok {
 			if a.Empty() {
@@ -222,7 +222,7 @@ func main() {
 					bLastEqA = bLastGtA
 					bLastGtA = nil
 					continue
-				} else if c == -1 { //a < bLastGtA
+				} else if c == -1 { // a < bLastGtA
 					compareAndPrint(a, false, nil)
 					continue
 				} else {
@@ -252,12 +252,12 @@ func main() {
 							compareAndPrint(a, true, b)
 							bLastEqA = b
 							bLastGtA = nil
-						} else if c == -1 { //a < b
+						} else if c == -1 { // a < b
 							if bLastGtA == nil && bLastEqA == nil {
 								compareAndPrint(a, false, nil)
 							}
 							bLastGtA = b
-							//							bLastEqA = nil
+							// 							bLastEqA = nil
 							break
 						} else { // now c == 1 a > b
 							if lastC < 0 && aLast != nil && bLastGtA == nil {

@@ -14,9 +14,15 @@ It has these top-level messages:
 */
 package kafka
 
-import proto "github.com/golang/protobuf/proto"
-import fmt "fmt"
-import math "math"
+import (
+	proto "github.com/golang/protobuf/proto"
+)
+import (
+	fmt "fmt"
+)
+import (
+	math "math"
+)
 
 import (
 	context "golang.org/x/net/context"

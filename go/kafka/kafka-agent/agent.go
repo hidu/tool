@@ -2,18 +2,20 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net"
+	// "os"
 	"strings"
-	//	"os"
+	"sync"
+
+	"github.com/Shopify/sarama"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	// "google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
-	//	"google.golang.org/grpc/metadata"
-	"fmt"
-	"github.com/Shopify/sarama"
+
 	pb "github.com/hidu/tool/go/kafka/kafka-agent/kafka"
-	"sync"
 )
 
 var addr = flag.String("addr", ":50051", "agent listen addr")

@@ -1,15 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"time"
 
-	"fmt"
 	"github.com/hidu/go-speed"
-	pb "github.com/hidu/tool/go/kafka/kafka-agent/kafka"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"time"
+
+	pb "github.com/hidu/tool/go/kafka/kafka-agent/kafka"
 )
 
 const (

@@ -6,8 +6,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/hidu/go-speed"
-	"github.com/hidu/goutils/log_util"
 	"io"
 	"io/ioutil"
 	glog "log"
@@ -19,9 +17,12 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/hidu/go-speed"
+	"github.com/hidu/goutils/log_util"
 )
 
-//import _ "net/http/pprof"
+// import _ "net/http/pprof"
 var version = "0.1.5 20161125"
 
 var conc = flag.Uint("c", 10, "Concurrent Num [conc]")
@@ -102,7 +103,7 @@ func getConf() *UrlCallConcConf {
 	}
 	bs, err := ioutil.ReadFile(*flagConf)
 	if err != nil {
-		//log.Println("[wf] read_conf failed", fname, "skip,", err.Error())
+		// log.Println("[wf] read_conf failed", fname, "skip,", err.Error())
 	} else {
 		err := json.Unmarshal(bs, &conf)
 		if err != nil {
@@ -150,9 +151,9 @@ func main() {
 		*ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.1103.21"
 	}
 
-	//	go func() {
-	//		http.ListenAndServe("localhost:6060", nil)
-	//	}()
+	// 	go func() {
+	// 		http.ListenAndServe("localhost:6060", nil)
+	// 	}()
 
 	log = glog.New(os.Stderr, "", glog.LstdFlags)
 	if *logPath != "" {
@@ -336,7 +337,7 @@ func parseComplexStdIn() {
 			}
 		}
 
-		buf.ReadByte() //the last \n
+		buf.ReadByte() // the last \n
 
 		jobs <- req
 	}

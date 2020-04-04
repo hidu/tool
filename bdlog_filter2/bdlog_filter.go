@@ -81,7 +81,7 @@ func main() {
 func parseConds(condStr string) (*CondItem, error) {
 	r := regexp.MustCompile(`(\w+)([><=]{1,2})(\d+(.\d+)?)`)
 	m := r.FindStringSubmatch(condStr)
-	//["a>=4.0" "a" ">=" "4.0" ".0"]
+	// ["a>=4.0" "a" ">=" "4.0" ".0"]
 	if len(m) < 3 {
 		return nil, fmt.Errorf("parse cond failed")
 	}
@@ -132,10 +132,10 @@ func (kv logKv) get(key string) string {
 	return ""
 }
 
-var startKey byte= '['
-var stopKey byte= ']'
-var kvSpace byte= ' '
-var esc  byte = '\\'
+var startKey byte = '['
+var stopKey byte = ']'
+var kvSpace byte = ' '
+var esc byte = '\\'
 
 func parseLine(line []byte) logKv {
 
@@ -147,29 +147,29 @@ func parseLine(line []byte) logKv {
 
 	var last byte
 
-	for _,s:=range line{
-		if s==kvSpace && keyStr==""{
+	for _, s := range line {
+		if s == kvSpace && keyStr == "" {
 			keyBuf.Reset()
 			valBuf.Reset()
-			valStr=""
-		}else if last!=esc && s==startKey{
-			keyStr=keyBuf.String()
+			valStr = ""
+		} else if last != esc && s == startKey {
+			keyStr = keyBuf.String()
 			valBuf.Reset()
-		}else if last!=esc && s==stopKey{
-			valStr=valBuf.String()
-			if keyStr!=""{
-				kv[keyStr]=valStr
+		} else if last != esc && s == stopKey {
+			valStr = valBuf.String()
+			if keyStr != "" {
+				kv[keyStr] = valStr
 
-				keyStr=""
+				keyStr = ""
 			}
-		}else if keyStr==""{
+		} else if keyStr == "" {
 			keyBuf.WriteByte(s)
-		}else {
+		} else {
 			valBuf.WriteByte(s)
 		}
 
-		last=s
+		last = s
 	}
-	//fmt.Println("kv-->",kv)
+	// fmt.Println("kv-->",kv)
 	return kv
 }

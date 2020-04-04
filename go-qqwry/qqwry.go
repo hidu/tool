@@ -1,13 +1,14 @@
 package main
 
 import (
-	"./qqwry"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/hidu/tool/go-qqwry/qqwry"
 )
 
 var data = flag.String("db", "../data/qqwry.dat", "the qqwry.data path")

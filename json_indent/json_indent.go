@@ -6,13 +6,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/hidu/goutils/object"
 	"io"
 	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/hidu/goutils/object"
 )
 
 var usenum = flag.Bool("n", true, "use number")

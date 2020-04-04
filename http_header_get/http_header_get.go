@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/beefsack/go-rate"
 	"io"
 	"log"
 	"net/http"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/beefsack/go-rate"
 )
 
 var concurrentMax uint = 200
@@ -209,7 +210,7 @@ func parseLine(line string, times int) {
 	_, err := url.Parse(urlRaw)
 	if err != nil {
 		log.Println("parse url failed,url:", urlRaw, err)
-		//		saveResult(urlRaw, line, err, nil)
+		// 		saveResult(urlRaw, line, err, nil)
 		return
 	}
 

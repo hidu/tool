@@ -81,7 +81,7 @@ func main() {
 func parseConds(condStr string) (*CondItem, error) {
 	r := regexp.MustCompile(`(\w+)([><=]{1,2})(\d+(.\d+)?)`)
 	m := r.FindStringSubmatch(condStr)
-	//["a>=4.0" "a" ">=" "4.0" ".0"]
+	// ["a>=4.0" "a" ">=" "4.0" ".0"]
 	if len(m) < 3 {
 		return nil, fmt.Errorf("parse cond failed")
 	}

@@ -8,11 +8,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
-	zhcn "golang.org/x/text/encoding/simplifiedchinese"
 	"log"
 	"net"
 	"os"
 	"strings"
+
+	zhcn "golang.org/x/text/encoding/simplifiedchinese"
 )
 
 const (

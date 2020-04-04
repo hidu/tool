@@ -4,25 +4,25 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 
-	"bytes"
-	"encoding/json"
 	"github.com/Shopify/sarama"
 	"github.com/hidu/go-speed"
 	"github.com/hidu/goutils/object"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"sync/atomic"
-	"time"
 )
 
 var (
@@ -31,7 +31,7 @@ var (
 	partitions = flag.String("partitions", "all", "The partitions to consume, can be 'all' or comma-separated numbers")
 	offset     = flag.Int64("offset", -1, "The offset to start with. Can be -2:oldest, -1:newest")
 	verbose    = flag.Bool("verbose", false, "Whether to turn on sarama logging")
-	//	bufferSize = flag.Int("buffer-size", 256, "The buffer size of the message channel.")
+	// 	bufferSize = flag.Int("buffer-size", 256, "The buffer size of the message channel.")
 	httpConsumerUrl      = flag.String("http-con-url", os.Getenv("PUSHER_HTTP_CON_URL"), "http consumer url")
 	httpConsumerTimeout  = flag.Int("http-con-timeout", 10000, "http consumer timeout,ms")
 	httpConsumerReTryNum = flag.Int("rt", 3, "http consumer retry times")

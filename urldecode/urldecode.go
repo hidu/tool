@@ -147,7 +147,7 @@ func QueryUnescape(s []byte) string {
 	return string(unescapeBuf[:j])
 }
 
-/////////=============
+// ///////=============
 
 // isSpace reports whether the character is a Unicode white space character.
 // We avoid dependency on the unicode package, but check validity of the implementation

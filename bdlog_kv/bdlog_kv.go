@@ -81,7 +81,7 @@ func printLine(line []byte) {
 	var vas []string
 	var vmap = make(map[string]string)
 	for _, key := range outFields {
-		if key == "-" { //all line
+		if key == "-" { // all line
 			if *asJson {
 				vmap["-"] = string(line)
 			} else {
