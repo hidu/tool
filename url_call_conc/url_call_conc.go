@@ -35,7 +35,7 @@ var start = flag.Int("start", 0, "start item num")
 
 var complex = flag.Bool("complex", false, `Complex Input (default false)`)
 
-var v = flag.Bool("version", false, "Version:"+version)
+var v = flag.Bool("version", false, "VersionFile:"+version)
 
 var flagRetry = flag.Int("retry", 3, "retry times")
 var flagConf = flag.String("conf", "url_call_conc.conf", "dynamic conf")

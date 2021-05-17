@@ -31,7 +31,7 @@ func init() {
 		fmt.Println("\nUsage: fcomm [OPTION]... file_a file_b")
 		fmt.Println("Compare sorted files file_a and file_b line by line.")
 		fmt.Println("\nsite: https://github.com/hidu/tool")
-		fmt.Println("Version:", version)
+		fmt.Println("VersionFile:", version)
 	}
 }
 
