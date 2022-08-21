@@ -13,17 +13,17 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-func main(){
+func main() {
 	var m interface{}
-	input,err:=ioutil.ReadAll(os.Stdin)
-	if err!=nil{
-		log.Fatalln("read toml from stdin failed:",err)
+	input, err := ioutil.ReadAll(os.Stdin)
+	if err != nil {
+		log.Fatalln("read toml from stdin failed:", err)
 	}
-	if err=json.Unmarshal(input,&m);err!=nil{
-		log.Fatalln("decode toml  failed:",err)
+	if err = json.Unmarshal(input, &m); err != nil {
+		log.Fatalln("decode toml  failed:", err)
 	}
-	enc:=toml.NewEncoder(os.Stdout)
-	if err=enc.Encode(m);err!=nil{
-		log.Fatalln("encode to json failed:",err)
+	enc := toml.NewEncoder(os.Stdout)
+	if err = enc.Encode(m); err != nil {
+		log.Fatalln("encode to json failed:", err)
 	}
 }

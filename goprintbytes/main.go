@@ -11,15 +11,15 @@ import (
 	"log"
 )
 
-func main(){
+func main() {
 	flag.Parse()
-	f:=flag.Arg(0)
-	if f==""{
+	f := flag.Arg(0)
+	if f == "" {
 		log.Fatalf("filename required")
 	}
-	bf,err:=ioutil.ReadFile(f)
-	if err!=nil{
-		log.Fatalf("ReadFile(%q) %v",f,err)
+	bf, err := ioutil.ReadFile(f)
+	if err != nil {
+		log.Fatalf("ReadFile(%q) %v", f, err)
 	}
 	fmt.Println(bf)
 }
