@@ -16,10 +16,16 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var hp = flag.String("hp", "-c 1 -n 1", "hey params")
+
 var in = flag.String("in", "task.txt", "task file")
+var out = flag.String("out", "", "result file")
+
+var s = flag.Int("sleep", 0, "sleep x seconds after each")
+var detail = flag.Bool("detail", true, "save hey result to content")
 
 func main() {
 	flag.Parse()
@@ -28,6 +34,9 @@ func main() {
 		log.Fatalln(err.Error())
 	}
 
+	outFile := getOutFile()
+	defer outFile.Close()
+
 	lines := strings.Split(string(content), "\n")
 	for i := 0; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
@@ -35,8 +44,9 @@ func main() {
 			continue
 		}
 		arr := strings.Fields(line)
+		log.Printf("line %d: %q\n", i+1, arr)
 		if len(arr) != 2 {
-			log.Println("ignore line", i+1, ":", line)
+			log.Println("ignored")
 			continue
 		}
 		ret, err := callHey(arr[0], arr[1])
@@ -44,8 +54,27 @@ func main() {
 			log.Println("has error:", err)
 			continue
 		}
-		fmt.Println(ret.String())
+		_, _ = fmt.Fprintf(outFile, ret.String()+"\n")
+		if i < len(lines)-1 {
+			time.Sleep(time.Duration(*s) * time.Second)
+		}
 	}
+}
+
+func getOutFile() io.WriteCloser {
+	name := *out
+	if name == "stdout" {
+		return os.Stdout
+	}
+
+	if len(name) == 0 || name == "auto" {
+		name = *in + ".result." + time.Now().Format("200601021504")
+	}
+	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	if err != nil {
+		log.Fatalln("open result file failed:", err)
+	}
+	return f
 }
 
 func callHey(name string, url string) (*result, error) {
@@ -73,10 +102,12 @@ func callHey(name string, url string) (*result, error) {
 		return nil, err
 	}
 	ret := &result{
-		Name:   name,
-		URL:    url,
-		QPS:    qps,
-		Detail: string(content),
+		Name: name,
+		URL:  url,
+		QPS:  qps,
+	}
+	if *detail {
+		ret.Detail = string(content)
 	}
 	return ret, nil
 }
