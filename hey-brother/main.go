@@ -70,7 +70,7 @@ func getOutFile() io.WriteCloser {
 	if len(name) == 0 || name == "auto" {
 		name = *in + ".result." + time.Now().Format("200601021504")
 	}
-	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0755)
+	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Fatalln("open result file failed:", err)
 	}
