@@ -34,13 +34,19 @@ func main() {
 		log.Fatalln(err.Error())
 	}
 
-	outFile := getOutFile()
+	outName,outFile := getOutFile()
 	defer outFile.Close()
+	log.Println("out=",outName)
+	_, _ = fmt.Fprintf(outFile, specLine("From "+outName)+"\n")
 
 	lines := strings.Split(string(content), "\n")
 	for i := 0; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
 		if len(line) == 0 {
+			continue
+		}
+		if line[0]=='#'{
+			_, _ = fmt.Fprintf(outFile, specLine(line)+"\n")
 			continue
 		}
 		arr := strings.Fields(line)
@@ -61,10 +67,10 @@ func main() {
 	}
 }
 
-func getOutFile() io.WriteCloser {
+func getOutFile() (string,io.WriteCloser) {
 	name := *out
 	if name == "stdout" {
-		return os.Stdout
+		return name,os.Stdout
 	}
 
 	if len(name) == 0 || name == "auto" {
@@ -74,7 +80,7 @@ func getOutFile() io.WriteCloser {
 	if err != nil {
 		log.Fatalln("open result file failed:", err)
 	}
-	return f
+	return name,f
 }
 
 func callHey(name string, url string) (*result, error) {
@@ -84,14 +90,17 @@ func callHey(name string, url string) (*result, error) {
 	cmd := exec.Command("hey", args...)
 	log.Println("exec:", cmd.String())
 
-	out := &bytes.Buffer{}
-	cmd.Stdout = out
+	bf := &bytes.Buffer{}
+	cmd.Stdout = bf
 
+	start:=time.Now()
 	err := cmd.Run()
 	if err != nil {
 		return nil, err
 	}
-	content, err := io.ReadAll(out)
+	cost:=time.Since(start)
+	
+	content, err := io.ReadAll(bf)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +114,7 @@ func callHey(name string, url string) (*result, error) {
 		Name: name,
 		URL:  url,
 		QPS:  qps,
+		Seconds: cost.Seconds(),
 	}
 	if *detail {
 		ret.Detail = string(content)
@@ -112,10 +122,20 @@ func callHey(name string, url string) (*result, error) {
 	return ret, nil
 }
 
+
+func specLine(line string)string{
+	data:=map[string]interface{}{
+		"Special":line,
+	}
+	b, _ := json.Marshal(data)
+	return string(b)
+}
+
 type result struct {
 	Name   string
 	URL    string
 	QPS    float64
+	Seconds float64
 	Detail string
 }
 
