@@ -37,7 +37,7 @@ func main() {
 	outName, outFile := getOutFile()
 	defer outFile.Close()
 	log.Println("out: ", outName)
-	_, _ = fmt.Fprintf(outFile, specLine("From: "+outName+", Args: "+*hp)+"\n")
+	_, _ = fmt.Fprintf(outFile, specLine("From: "+*in+", Args: "+*hp)+"\n")
 
 	lines := strings.Split(string(content), "\n")
 	for i := 0; i < len(lines); i++ {
