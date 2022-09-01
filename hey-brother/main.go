@@ -34,10 +34,10 @@ func main() {
 		log.Fatalln(err.Error())
 	}
 
-	outName,outFile := getOutFile()
+	outName, outFile := getOutFile()
 	defer outFile.Close()
-	log.Println("out=",outName)
-	_, _ = fmt.Fprintf(outFile, specLine("From "+outName)+"\n")
+	log.Println("out: ", outName)
+	_, _ = fmt.Fprintf(outFile, specLine("From: "+outName+", Args: "+*hp)+"\n")
 
 	lines := strings.Split(string(content), "\n")
 	for i := 0; i < len(lines); i++ {
@@ -45,7 +45,7 @@ func main() {
 		if len(line) == 0 {
 			continue
 		}
-		if line[0]=='#'{
+		if line[0] == '#' {
 			_, _ = fmt.Fprintf(outFile, specLine(line)+"\n")
 			continue
 		}
@@ -67,10 +67,10 @@ func main() {
 	}
 }
 
-func getOutFile() (string,io.WriteCloser) {
+func getOutFile() (string, io.WriteCloser) {
 	name := *out
 	if name == "stdout" {
-		return name,os.Stdout
+		return name, os.Stdout
 	}
 
 	if len(name) == 0 || name == "auto" {
@@ -80,7 +80,7 @@ func getOutFile() (string,io.WriteCloser) {
 	if err != nil {
 		log.Fatalln("open result file failed:", err)
 	}
-	return name,f
+	return name, f
 }
 
 func callHey(name string, url string) (*result, error) {
@@ -93,13 +93,13 @@ func callHey(name string, url string) (*result, error) {
 	bf := &bytes.Buffer{}
 	cmd.Stdout = bf
 
-	start:=time.Now()
+	start := time.Now()
 	err := cmd.Run()
 	if err != nil {
 		return nil, err
 	}
-	cost:=time.Since(start)
-	
+	cost := time.Since(start)
+
 	content, err := io.ReadAll(bf)
 	if err != nil {
 		return nil, err
@@ -111,9 +111,9 @@ func callHey(name string, url string) (*result, error) {
 		return nil, err
 	}
 	ret := &result{
-		Name: name,
-		URL:  url,
-		QPS:  qps,
+		Name:    name,
+		URL:     url,
+		QPS:     qps,
 		Seconds: cost.Seconds(),
 	}
 	if *detail {
@@ -122,21 +122,20 @@ func callHey(name string, url string) (*result, error) {
 	return ret, nil
 }
 
-
-func specLine(line string)string{
-	data:=map[string]interface{}{
-		"Special":line,
+func specLine(line string) string {
+	data := map[string]interface{}{
+		"Special": line,
 	}
 	b, _ := json.Marshal(data)
 	return string(b)
 }
 
 type result struct {
-	Name   string
-	URL    string
-	QPS    float64
+	Name    string
+	URL     string
+	QPS     float64
 	Seconds float64
-	Detail string
+	Detail  string
 }
 
 func (r *result) String() string {
