@@ -13,6 +13,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -21,10 +22,20 @@ import (
 
 var hp = flag.String("hp", "-c 1 -n 1", "hey params")
 
-var in = flag.String("in", "task.txt", "task file")
-var out = flag.String("out", "", "result file")
+var in = flag.String("in", "task.txt", `task file name`)
 
-var s = flag.Int("sleep", 0, "sleep x seconds after each")
+var dir = flag.String("dir", "", "result file dir")
+
+var out = flag.String("out", "", `result file name, 
+when empty, will named with task file name and time, e.g: task1_2.txt.result.202209021543
+when 'stdout', will print result to os.Stdout
+
+support var:
+{time} -> 202209021543
+{in}   -> task1_2.txt
+`)
+
+var s = flag.Int("sleep", 10, "sleep x seconds after each")
 var detail = flag.Bool("detail", true, "save hey result to content")
 
 func main() {
@@ -72,9 +83,20 @@ func getOutFile() (string, io.WriteCloser) {
 	if name == "stdout" {
 		return name, os.Stdout
 	}
+	inName := filepath.Base(*in)
+
+	nowStr := time.Now().Format("200601021504")
 
 	if len(name) == 0 || name == "auto" {
-		name = *in + ".result." + time.Now().Format("200601021504")
+		name = inName + ".result." + nowStr
+	}
+
+	name = strings.ReplaceAll(name, "{in}", inName)
+	name = strings.ReplaceAll(name, "{time}", nowStr)
+
+	if len(*dir) > 0 {
+		_ = os.MkdirAll(*dir, 0777)
+		name = filepath.Join(*dir, name)
 	}
 	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
