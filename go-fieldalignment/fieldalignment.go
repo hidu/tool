@@ -96,7 +96,9 @@ func fieldalignment(pass *analysis.Pass, node *ast.StructType, typ *types.Struct
 
 	after, err := doFix(pass, node, indexes)
 	if err != nil {
-		log.Fatalln("has error:", err.Error())
+		log.Println(message)
+		log.Println("doFix has error:", err.Error())
+		return
 	}
 
 	pass.Report(analysis.Diagnostic{

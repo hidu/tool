@@ -10,7 +10,6 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
-	"log"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -37,7 +36,7 @@ type User `
 	code := p + buf1.String()
 	df, err := decorator.ParseFile(fset, "code.go", []byte(code), parser.ParseComments)
 	if err != nil {
-		log.Println(err)
+		return nil, err
 	}
 
 	var flat []*dst.Field
