@@ -13,6 +13,7 @@ import (
 	"go/types"
 	"log"
 	"sort"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -57,9 +58,24 @@ var Analyzer = &analysis.Analyzer{
 func run(pass *analysis.Pass) (interface{}, error) {
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	nodeFilter := []ast.Node{
+		(*ast.File)(nil),
 		(*ast.StructType)(nil),
 	}
+	var ignore bool
 	inspect.Preorder(nodeFilter, func(node ast.Node) {
+		if ignore {
+			return
+		}
+
+		if nf, ok := node.(*ast.File); ok {
+			f := pass.Fset.File(nf.Pos())
+			// protobuf 自动生成的 go 文，其编解码器直接依赖其生成的字段顺序，不能优化
+			if strings.HasSuffix(f.Name(), ".pb.go") {
+				ignore = true
+				return
+			}
+		}
+
 		var s *ast.StructType
 		var ok bool
 		if s, ok = node.(*ast.StructType); !ok {

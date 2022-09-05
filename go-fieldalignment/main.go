@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"go/ast"
 	"go/format"
 	"go/parser"
@@ -23,6 +24,8 @@ import (
 func main() {
 	singlechecker.Main(Analyzer)
 }
+
+var errSkip = errors.New("skip")
 
 func doFix(pass *analysis.Pass, node *ast.StructType, indexes []int) ([]byte, error) {
 	var buf1 bytes.Buffer
@@ -58,6 +61,12 @@ type User `
 				}
 				flat = append(flat, nf)
 			}
+		}
+
+		// fix for
+		//  name chan struct{}
+		if len(indexes) != len(flat) {
+			return true
 		}
 
 		// Sort fields according to the optimal order.
