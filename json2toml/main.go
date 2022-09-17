@@ -6,7 +6,7 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"log"
 	"os"
 
@@ -15,7 +15,7 @@ import (
 
 func main() {
 	var m interface{}
-	input, err := ioutil.ReadAll(os.Stdin)
+	input, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		log.Fatalln("read toml from stdin failed:", err)
 	}

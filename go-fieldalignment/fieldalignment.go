@@ -70,7 +70,9 @@ func run(pass *analysis.Pass) (interface{}, error) {
 		if nf, ok := node.(*ast.File); ok {
 			f := pass.Fset.File(nf.Pos())
 			// protobuf 自动生成的 go 文，其编解码器直接依赖其生成的字段顺序，不能优化
-			if strings.HasSuffix(f.Name(), ".pb.go") {
+			if strings.HasSuffix(f.Name(), ".pb.go") ||
+				strings.HasSuffix(f.Name(), "_test.go") ||
+				doNotEdit(nf) {
 				ignore = true
 				return
 			}
@@ -90,13 +92,22 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
+func doNotEdit(f *ast.File) bool {
+	for _, cg := range f.Comments {
+		if strings.Contains(cg.Text(), "DO NOT EDIT") {
+			return true
+		}
+	}
+	return false
+}
+
 var unsafePointerTyp = types.Unsafe.Scope().Lookup("Pointer").(*types.TypeName).Type()
 
 func fieldalignment(pass *analysis.Pass, node *ast.StructType, typ *types.Struct) {
 	wordSize := pass.TypesSizes.Sizeof(unsafePointerTyp)
 	maxAlign := pass.TypesSizes.Alignof(unsafePointerTyp)
 
-	s := gcSizes{wordSize, maxAlign}
+	s := gcSizes{WordSize: wordSize, MaxAlign: maxAlign}
 	optimal, indexes := optimalOrder(typ, &s)
 	optsz, optptrs := s.Sizeof(optimal), s.ptrdata(optimal)
 
@@ -147,10 +158,10 @@ func optimalOrder(str *types.Struct, sizes *gcSizes) (*types.Struct, []int) {
 		field := str.Field(i)
 		ft := field.Type()
 		elems[i] = elem{
-			i,
-			sizes.Alignof(ft),
-			sizes.Sizeof(ft),
-			sizes.ptrdata(ft),
+			index:   i,
+			alignof: sizes.Alignof(ft),
+			sizeof:  sizes.Sizeof(ft),
+			ptrdata: sizes.ptrdata(ft),
 		}
 	}
 

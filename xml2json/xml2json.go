@@ -62,7 +62,7 @@ func main() {
 	jsonBs, err := json.MarshalIndent(jsonData, "", "  ")
 	checkErr(err)
 	if *outJson != "" {
-		ioutil.WriteFile(*outJson, jsonBs, 0664)
+		os.WriteFile(*outJson, jsonBs, 0664)
 	} else {
 		fmt.Println(string(jsonBs))
 	}
