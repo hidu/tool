@@ -7,12 +7,16 @@
 package main
 
 import (
+	"bytes"
+	"flag"
 	"fmt"
 	"go/ast"
+	"go/format"
 	"go/token"
 	"go/types"
 	"log"
 	"sort"
+	"strconv"
 	"strings"
 
 	"golang.org/x/tools/go/analysis"
@@ -55,12 +59,19 @@ var Analyzer = &analysis.Analyzer{
 	Run:      run,
 }
 
+var debug bool
+
 func run(pass *analysis.Pass) (interface{}, error) {
+	if ft := flag.Lookup("v"); ft != nil {
+		debug, _ = strconv.ParseBool(ft.Value.String())
+	}
+
 	inspect := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 	nodeFilter := []ast.Node{
 		(*ast.File)(nil),
 		(*ast.StructType)(nil),
 	}
+
 	var ignore bool
 	inspect.Preorder(nodeFilter, func(node ast.Node) {
 		if ignore {
@@ -74,6 +85,9 @@ func run(pass *analysis.Pass) (interface{}, error) {
 				strings.HasSuffix(f.Name(), "_test.go") ||
 				doNotEdit(nf) {
 				ignore = true
+				if debug {
+					log.Println("ignore:", f.Name())
+				}
 				return
 			}
 		}
@@ -111,14 +125,29 @@ func fieldalignment(pass *analysis.Pass, node *ast.StructType, typ *types.Struct
 	optimal, indexes := optimalOrder(typ, &s)
 	optsz, optptrs := s.Sizeof(optimal), s.ptrdata(optimal)
 
+	buf := &bytes.Buffer{}
+	_ = format.Node(buf, pass.Fset, node)
+
 	var message string
 	if sz := s.Sizeof(typ); sz != optsz {
-		message = fmt.Sprintf("struct of size %d could be %d", sz, optsz)
+		message += fmt.Sprintf("struct of size %d could be %d ", sz, optsz)
 	} else if ptrs := s.ptrdata(typ); ptrs != optptrs {
-		message = fmt.Sprintf("struct with %d pointer bytes could be %d", ptrs, optptrs)
+		message += fmt.Sprintf("struct with %d pointer bytes could be %d ", ptrs, optptrs)
 	} else {
 		// Already optimal order.
+		message += fmt.Sprintf("Already optimal order. struct of size %d, pointer bytes %d", sz, ptrs)
+		message += "\n" + buf.String()
+		if debug {
+			pass.Report(analysis.Diagnostic{
+				Pos:     node.Pos(),
+				End:     node.Pos() + token.Pos(len("struct")),
+				Message: message,
+			})
+		}
 		return
+	}
+	if debug {
+		message += "\n" + buf.String()
 	}
 
 	after, err := doFix(pass, node, indexes)
@@ -126,6 +155,10 @@ func fieldalignment(pass *analysis.Pass, node *ast.StructType, typ *types.Struct
 		log.Println(message)
 		log.Println("doFix has error:", err.Error())
 		return
+	}
+
+	if debug {
+		message += "\nCurrent ↑↑↑" + strings.Repeat(">", 100) + "Expect ↓↓↓\n" + string(after)
 	}
 
 	pass.Report(analysis.Diagnostic{
