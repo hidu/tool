@@ -59,6 +59,8 @@ var Analyzer = &analysis.Analyzer{
 	Run:      run,
 }
 
+var detail = flag.Bool("detail", false, "result with detail")
+
 var debug bool
 
 func run(pass *analysis.Pass) (interface{}, error) {
@@ -146,7 +148,7 @@ func fieldalignment(pass *analysis.Pass, node *ast.StructType, typ *types.Struct
 		}
 		return
 	}
-	if debug {
+	if *detail {
 		message += "\n" + buf.String()
 	}
 
@@ -157,7 +159,7 @@ func fieldalignment(pass *analysis.Pass, node *ast.StructType, typ *types.Struct
 		return
 	}
 
-	if debug {
+	if *detail {
 		message += "\nCurrent ↑↑↑" + strings.Repeat(">", 100) + "Expect ↓↓↓\n" + string(after)
 	}
 
