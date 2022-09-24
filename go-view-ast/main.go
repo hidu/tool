@@ -10,7 +10,6 @@ import (
 	"go/parser"
 	"go/token"
 	"log"
-	"path/filepath"
 
 	"github.com/dave/dst"
 	"github.com/dave/dst/decorator"
@@ -24,21 +23,10 @@ func main() {
 	flag.Parse()
 	fileName := flag.Arg(0)
 	fset := token.NewFileSet()
-	mps, err := parser.ParseDir(fset, filepath.Dir(fileName), nil, parser.ParseComments)
+
+	file, err := parser.ParseFile(fset, fileName, nil, parser.ParseComments)
 	if err != nil {
 		log.Fatalln(err)
-	}
-	var file *ast.File
-	for _, p := range mps {
-		for name, f := range p.Files {
-			if name == fileName {
-				file = f
-			}
-		}
-	}
-
-	if file == nil {
-		log.Println("not found")
 	}
 
 	var node ast.Node
