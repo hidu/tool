@@ -15,7 +15,6 @@ var fields = flag.String("fs", "", "field names,eg:logid,uid")
 var notShowKeys = flag.Bool("nokeys", false, "don't show keys")
 var separator = flag.String("sep", "\t", "print split str")
 var asJson = flag.Bool("json", false, "output as json")
-var oldFormat = flag.Bool("old", false, "is old log format")
 
 var printHeader = flag.Bool("h", false, "print header")
 
@@ -35,7 +34,7 @@ var outFields []string
 
 func main() {
 	flag.Parse()
-	if *fields == "" {
+	if len(*fields) == 0 {
 		fmt.Fprint(os.Stderr, "output fields is empty\n")
 		os.Exit(1)
 	}
@@ -53,7 +52,7 @@ func parseFields(fs string) (result []string) {
 	ns := strings.Split(fs, ",")
 	for _, name := range ns {
 		name = strings.TrimSpace(name)
-		if name != "" {
+		if len(name) != 0 {
 			result = append(result, name)
 		}
 	}

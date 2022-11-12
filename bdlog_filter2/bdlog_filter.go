@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -65,7 +66,7 @@ var cond *CondItem
 
 func main() {
 	flag.Parse()
-	if *conds == "" {
+	if len(*conds) == 0 {
 		fmt.Fprint(os.Stderr, "filter is empty\n")
 		os.Exit(1)
 	}
@@ -83,7 +84,7 @@ func parseConds(condStr string) (*CondItem, error) {
 	m := r.FindStringSubmatch(condStr)
 	// ["a>=4.0" "a" ">=" "4.0" ".0"]
 	if len(m) < 3 {
-		return nil, fmt.Errorf("parse cond failed")
+		return nil, errors.New("parse cond failed")
 	}
 	result := &CondItem{
 		Key: strings.TrimSpace(m[1]),
@@ -138,7 +139,6 @@ var kvSpace byte = ' '
 var esc byte = '\\'
 
 func parseLine(line []byte) logKv {
-
 	var keyBuf bytes.Buffer
 	var valBuf bytes.Buffer
 	var keyStr string
@@ -148,7 +148,7 @@ func parseLine(line []byte) logKv {
 	var last byte
 
 	for _, s := range line {
-		if s == kvSpace && keyStr == "" {
+		if s == kvSpace && len(keyStr) == 0 {
 			keyBuf.Reset()
 			valBuf.Reset()
 			valStr = ""
@@ -157,12 +157,12 @@ func parseLine(line []byte) logKv {
 			valBuf.Reset()
 		} else if last != esc && s == stopKey {
 			valStr = valBuf.String()
-			if keyStr != "" {
+			if len(keyStr) != 0 {
 				kv[keyStr] = valStr
 
 				keyStr = ""
 			}
-		} else if keyStr == "" {
+		} else if len(keyStr) == 0 {
 			keyBuf.WriteByte(s)
 		} else {
 			valBuf.WriteByte(s)

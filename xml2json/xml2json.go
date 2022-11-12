@@ -2,9 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -35,12 +35,12 @@ func main() {
 	jsonFile := os.Stdin
 	var err error
 
-	if *xmlName != "" {
+	if len(*xmlName) != 0 {
 		jsonFile, err = os.Open(*xmlName)
 		checkErr(err)
 	}
 
-	if *outJson != "" {
+	if len(*outJson) != 0 {
 		err := checkOutFilePath(*outJson)
 		checkErr(err)
 	}
@@ -48,10 +48,10 @@ func main() {
 	jsonStr, err := x2j.ToJson(jsonFile)
 	checkErr(err)
 
-	var jsonData interface{}
+	var jsonData any
 	json.Unmarshal([]byte(jsonStr), &jsonData)
 
-	if *schemaPath != "" {
+	if len(*schemaPath) != 0 {
 		schema, err := loadJsonFile(*schemaPath)
 		checkErr(err)
 
@@ -61,7 +61,7 @@ func main() {
 
 	jsonBs, err := json.MarshalIndent(jsonData, "", "  ")
 	checkErr(err)
-	if *outJson != "" {
+	if len(*outJson) != 0 {
 		os.WriteFile(*outJson, jsonBs, 0664)
 	} else {
 		fmt.Println(string(jsonBs))
@@ -75,8 +75,8 @@ func checkErr(err error) {
 	log.Fatalln(err)
 }
 
-func loadJsonFile(jsonPath string) (data interface{}, err error) {
-	jsonBs, err := ioutil.ReadFile(jsonPath)
+func loadJsonFile(jsonPath string) (data any, err error) {
+	jsonBs, err := os.ReadFile(jsonPath)
 	if err != nil {
 		return nil, err
 	}
@@ -89,7 +89,7 @@ func checkOutFilePath(outPath string) error {
 	info, err := os.Stat(outPath)
 	if os.IsExist(err) {
 		if info.IsDir() {
-			return fmt.Errorf("outpath exist and is dir")
+			return errors.New("outpath exist and is dir")
 		}
 	}
 	dirPath := filepath.Dir(outPath)

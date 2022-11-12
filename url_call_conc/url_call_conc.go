@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	glog "log"
 	"net/http"
 	"net/url"
@@ -93,7 +93,7 @@ func (c *UrlCallConcConf) TryWrite() {
 		conf.Start = 0
 	}
 	bf, _ := json.MarshalIndent(conf, "", "  ")
-	ioutil.WriteFile(*flagConf, bf, 0666)
+	os.WriteFile(*flagConf, bf, 0666)
 }
 
 func getConf() *UrlCallConcConf {
@@ -101,7 +101,7 @@ func getConf() *UrlCallConcConf {
 		ConcMax: *conc,
 		Start:   uint64(*start),
 	}
-	bs, err := ioutil.ReadFile(*flagConf)
+	bs, err := os.ReadFile(*flagConf)
 	if err != nil {
 		// log.Println("[wf] read_conf failed", fname, "skip,", err.Error())
 	} else {
@@ -156,7 +156,7 @@ func main() {
 	// 	}()
 
 	log = glog.New(os.Stderr, "", glog.LstdFlags)
-	if *logPath != "" {
+	if len(*logPath) != 0 {
 		log_util.SetLogFile(log, *logPath, log_util.LOG_TYPE_HOUR)
 	}
 
@@ -202,7 +202,7 @@ func main() {
 		}
 	}()
 
-	if urlStr == "" {
+	if len(urlStr) == 0 {
 		if *complex {
 			parseComplexStdIn()
 		} else {
@@ -228,7 +228,7 @@ func main() {
 	}
 	speedData.Stop()
 
-	timeUsed := time.Now().Sub(startTime)
+	timeUsed := time.Since(startTime)
 
 	log.Println("[pid=", pid, "][info]done total:", idx, "used:", timeUsed)
 	confCur.Done = true
@@ -247,7 +247,7 @@ func parseSimpleStdIn() {
 		line, err := buf.ReadBytes('\n')
 		if len(line) > 0 {
 			urlStr = strings.TrimSpace(string(line))
-			if urlStr == "" {
+			if len(urlStr) == 0 {
 				continue
 			}
 			req, err := http.NewRequest(strings.ToUpper(*method), urlStr, nil)
@@ -322,7 +322,7 @@ func parseComplexStdIn() {
 			}
 			body = bytes.NewReader(bodyBf)
 		}
-		if hdObj.Method == "" {
+		if len(hdObj.Method) == 0 {
 			hdObj.Method = "GET"
 		}
 		req, err := http.NewRequest(strings.ToUpper(hdObj.Method), hdObj.Url, body)
@@ -353,13 +353,12 @@ func bufPeed(reader *bufio.Reader, n int) ([]byte, error) {
 		}
 	}
 	return bs, nil
-
 }
 
 type Head struct {
+	Header map[string]string `json:"header"`
 	Url    string            `json:"url"`
 	Method string            `json:"method"`
-	Header map[string]string `json:"header"`
 }
 
 func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
@@ -378,7 +377,7 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 	lr := NewLogRequest()
 	isSkip := false
 	isOutRange := false
-	var errOutOfRange = fmt.Errorf("urlCallWorker_OutOfRange")
+	var errOutOfRange = errors.New("urlCallWorker_OutOfRange")
 	tryTimes := 0
 	var conf *UrlCallConcConf
 	var dealRequest = func(req *http.Request) error {
@@ -411,7 +410,7 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 		conf = getCurConf()
 		startTime := time.Now()
 		resp, err := client.Do(req)
-		timeUsed := time.Now().Sub(startTime)
+		timeUsed := time.Since(startTime)
 
 		if resp != nil && resp.Body != nil {
 			defer resp.Body.Close()
@@ -429,7 +428,7 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 			}
 
 			lr.addNotice("http_code", resp.StatusCode)
-			bd, r_err := ioutil.ReadAll(resp.Body)
+			bd, r_err := io.ReadAll(resp.Body)
 			lr.addNotice("resp_len", len(bd))
 			lr.addNotice("resp_err", r_err)
 			respStr = string(bd)
@@ -476,7 +475,7 @@ func urlCallWorker(jobs <-chan *http.Request, workerId uint) {
 
 type logRequest struct {
 	buf  *bytes.Buffer
-	data map[string]interface{}
+	data map[string]any
 	keys []string
 }
 
@@ -490,11 +489,11 @@ func NewLogRequest() *logRequest {
 
 func (lr *logRequest) reset() {
 	lr.buf.Reset()
-	lr.data = make(map[string]interface{})
+	lr.data = make(map[string]any)
 	lr.keys = make([]string, 0, 10)
 }
 
-func (lr *logRequest) addNotice(key string, val interface{}) {
+func (lr *logRequest) addNotice(key string, val any) {
 	if val == nil {
 		if _, has := lr.data[key]; has {
 			delete(lr.data, key)

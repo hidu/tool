@@ -145,7 +145,7 @@ func callHey(name string, url string) (*result, error) {
 }
 
 func specLine(line string) string {
-	data := map[string]interface{}{
+	data := map[string]any{
 		"Special": line,
 	}
 	b, _ := json.Marshal(data)
@@ -155,9 +155,9 @@ func specLine(line string) string {
 type result struct {
 	Name    string
 	URL     string
+	Detail  string
 	QPS     float64
 	Seconds float64
-	Detail  string
 }
 
 func (r *result) String() string {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -36,19 +37,21 @@ func init() {
 }
 
 type CommFile struct {
-	Name string
 	File *os.File
+
 	// use which field to comp,-1:all line
-	BufLine        chan *FileLine
-	FieldID        int // -1:all line,
-	FieldSeparator string
+	BufLine chan *FileLine
+
 	LastLine       *FileLine
 	LastLines      map[string]*FileLine
+	Name           string
+	FieldSeparator string
+	FieldID        int // -1:all line,
 }
 
 func NewCommFile(name string, fieldId uint, fieldSep string) (*CommFile, error) {
-	if name == "" {
-		return nil, fmt.Errorf("name is empty")
+	if len(name) == 0 {
+		return nil, errors.New("name is empty")
 	}
 	f, err := os.Open(name)
 	if err != nil {
@@ -99,9 +102,9 @@ func (f *CommFile) Next() (*FileLine, bool) {
 
 type FileLine struct {
 	Line     string
+	Raw      string
 	NumValue float64
 	LineNo   int64
-	Raw      string
 	IsRaw    bool
 }
 
@@ -163,9 +166,9 @@ func (l *FileLine) String() string {
 
 func (l *FileLine) Empty() bool {
 	if l.IsRaw {
-		return l.Line == ""
+		return len(l.Line) == 0
 	}
-	return l.Raw == ""
+	return len(l.Raw) == 0
 }
 
 func main() {

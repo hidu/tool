@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -36,23 +36,23 @@ func main() {
 	http_method := ""
 
 	body := ""
-	if *post != "" {
+	if len(*post) != 0 {
 		http_method = "POST"
 		body = *post
 	}
 
-	if *post_body != "" {
-		ioutil.ReadFile(*post_body)
+	if len(*post_body) != 0 {
+		os.ReadFile(*post_body)
 	}
 
-	if *method != "" {
+	if len(*method) != 0 {
 		http_method = *method
 	}
 
-	if http_method == "" {
+	if len(http_method) == 0 {
 		http_method = "GET"
 	}
-	if *urlStr == "" {
+	if len(*urlStr) == 0 {
 		fmt.Fprint(os.Stderr, "empty url to test\n")
 		flag.PrintDefaults()
 		os.Exit(1)
@@ -63,9 +63,9 @@ func main() {
 		os.Exit(2)
 	}
 
-	if body != "" {
+	if len(body) != 0 {
 		req.ContentLength = int64(len(body))
-		if *content_type != "" {
+		if len(*content_type) != 0 {
 			req.Header.Set("Content-Type", *content_type)
 		}
 		req.Header.Set("Content-Length", fmt.Sprintf("%d", len(body)))
@@ -79,6 +79,7 @@ func main() {
 	}
 	printTsResult(tsArr)
 }
+
 func printTsResult(tsArr []*TimeMaps) {
 	line := strings.Repeat("=", 80)
 
@@ -198,7 +199,7 @@ func TestCallUrl(req *http.Request) *TimeMaps {
 		dumpRes, _ := httputil.DumpResponse(resp, true)
 		log.Printf("response\n"+splitLine+"\n%s\n"+splitLine+"\n", string(dumpRes))
 	}
-	bd, err := ioutil.ReadAll(resp.Body)
+	bd, err := io.ReadAll(resp.Body)
 	t3.Stop(err)
 	if err != nil {
 		return ts
@@ -224,7 +225,7 @@ func BuildReq(req *http.Request) *bytes.Buffer {
 	}
 	bf.WriteString(rn)
 	if req.Body != nil {
-		bd, _ := ioutil.ReadAll(req.Body)
+		bd, _ := io.ReadAll(req.Body)
 		bf.Write(bd)
 	}
 	return bf
@@ -292,8 +293,8 @@ func checkErr(err error) {
 }
 
 type MyFn struct {
-	name string
 	fn   func(fl []float64) float64
+	name string
 }
 
 func NewMyFn(name string, fn func(fl []float64) float64) *MyFn {
@@ -326,6 +327,7 @@ func Math_Min(fl []float64) float64 {
 	}
 	return m
 }
+
 func Math_Avg(fl []float64) float64 {
 	var t float64 = 0
 	for _, v := range fl {

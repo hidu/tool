@@ -36,15 +36,15 @@ func main() {
 }
 
 type Result struct {
-	Code int         `json:"code"`
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data"`
-	Used float64     `json:"used"`
-
-	Status    int                 `json:"-"`
+	startTime time.Time           `json:"-"`
+	Data      any                 `json:"data"`
 	rw        http.ResponseWriter `json:"-"`
 	req       *http.Request       `json:"-"`
-	startTime time.Time           `json:"-"`
+	Msg       string              `json:"msg"`
+	Code      int                 `json:"code"`
+	Used      float64             `json:"used"`
+
+	Status int `json:"-"`
 }
 
 func NewResult(rw http.ResponseWriter, req *http.Request) *Result {
@@ -53,11 +53,11 @@ func NewResult(rw http.ResponseWriter, req *http.Request) *Result {
 	return res
 }
 
-func (res *Result) WriteData(code int, msg string, data interface{}) {
+func (res *Result) WriteData(code int, msg string, data any) {
 	res.Code = code
 	res.Msg = msg
 	res.Data = data
-	res.Used = time.Now().Sub(res.startTime).Seconds()
+	res.Used = time.Since(res.startTime).Seconds()
 	bs, _ := json.Marshal(res)
 	res.rw.Header().Set("Content-Type", "application/json;charset=utf-8")
 	res.rw.WriteHeader(res.Status)
@@ -69,7 +69,7 @@ func handleXml2json(rw http.ResponseWriter, req *http.Request) {
 	xml := strings.TrimSpace(req.PostFormValue("xml"))
 	json_schema := strings.TrimSpace(req.PostFormValue("json_schema"))
 	res := NewResult(rw, req)
-	if xml == "" {
+	if len(xml) == 0 {
 		res.WriteData(1, "xml is empty", nil)
 		return
 	}
@@ -82,11 +82,11 @@ func handleXml2json(rw http.ResponseWriter, req *http.Request) {
 }
 
 func jsonFix(res *Result, jsonStr string, json_schema string) {
-	var jsonData interface{}
+	var jsonData any
 	json.Unmarshal([]byte(jsonStr), &jsonData)
 
-	if json_schema != "" {
-		var schema interface{}
+	if len(json_schema) != 0 {
+		var schema any
 		err := json.Unmarshal([]byte(json_schema), &schema)
 		if err != nil {
 			res.WriteData(2, err.Error(), nil)
@@ -100,13 +100,12 @@ func jsonFix(res *Result, jsonStr string, json_schema string) {
 	}
 	res.Status = http.StatusOK
 	res.WriteData(0, "success", jsonData)
-
 }
 
 func handleGetXmlJsonSchema(rw http.ResponseWriter, req *http.Request) {
 	xml := strings.TrimSpace(req.PostFormValue("xml"))
 	res := NewResult(rw, req)
-	if xml == "" {
+	if len(xml) == 0 {
 		res.WriteData(1, "xml is empty", nil)
 		return
 	}
@@ -127,11 +126,11 @@ func handleGetXmlJsonSchema(rw http.ResponseWriter, req *http.Request) {
 func handleGetJsonJsonSchema(rw http.ResponseWriter, req *http.Request) {
 	jsonStr := strings.TrimSpace(req.PostFormValue("json"))
 	res := NewResult(rw, req)
-	if jsonStr == "" {
+	if len(jsonStr) == 0 {
 		res.WriteData(1, "json str is empty", nil)
 		return
 	}
-	var jsonObj interface{}
+	var jsonObj any
 	err := json.Unmarshal([]byte(jsonStr), &jsonObj)
 	if err != nil {
 		res.WriteData(1, err.Error(), nil)
@@ -150,7 +149,7 @@ func handleJsonFix(rw http.ResponseWriter, req *http.Request) {
 	res := NewResult(rw, req)
 	jsonStr := req.PostFormValue("json")
 	json_schema := req.PostFormValue("json_schema")
-	if json_schema == "" {
+	if len(json_schema) == 0 {
 		res.WriteData(400, "json_schema is empty", nil)
 		return
 	}

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -28,25 +29,18 @@ func (cond *CondItem) Match(val float64) bool {
 	switch cond.Op {
 	case ">":
 		match = val > cond.Val
-		break
 	case ">=":
 		match = val >= cond.Val
-		break
 	case "<":
 		match = val < cond.Val
-		break
 	case "<=":
 		match = val <= cond.Val
-		break
 	case "=":
 		match = val == cond.Val
-		break
 	case "<>":
 		match = val != cond.Val
-		break
 	default:
 		log.Println("not support operate:", cond.Op)
-		break
 	}
 	return match
 }
@@ -65,7 +59,7 @@ var cond *CondItem
 
 func main() {
 	flag.Parse()
-	if *conds == "" {
+	if len(*conds) == 0 {
 		fmt.Fprint(os.Stderr, "filter is empty\n")
 		os.Exit(1)
 	}
@@ -83,7 +77,7 @@ func parseConds(condStr string) (*CondItem, error) {
 	m := r.FindStringSubmatch(condStr)
 	// ["a>=4.0" "a" ">=" "4.0" ".0"]
 	if len(m) < 3 {
-		return nil, fmt.Errorf("parse cond failed")
+		return nil, errors.New("parse cond failed")
 	}
 	result := &CondItem{
 		Key: strings.TrimSpace(m[1]),

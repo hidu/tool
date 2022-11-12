@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"regexp"
@@ -30,11 +29,11 @@ var fieldNames []string
 func main() {
 	flag.Parse()
 
-	if *fields != "" {
+	if len(*fields) != 0 {
 		fieldsArr := strings.Split(*fields, ",")
 		for _, fieldName := range fieldsArr {
 			fieldName = strings.TrimSpace(fieldName)
-			if fieldName != "" {
+			if len(fieldName) != 0 {
 				fieldNames = append(fieldNames, fieldName)
 			}
 		}
@@ -42,7 +41,7 @@ func main() {
 	jsonFile := os.Stdin
 
 	if *allFile {
-		buf, err := ioutil.ReadAll(jsonFile)
+		buf, err := io.ReadAll(jsonFile)
 		if err != nil {
 			log.Println(err)
 		} else {
@@ -75,7 +74,7 @@ func indent(json_byte []byte) {
 	for _, reg := range reges {
 		json_byte = reg.ReplaceAll(json_byte, []byte{})
 	}
-	var obj interface{}
+	var obj any
 	dec := json.NewDecoder(bytes.NewReader(json_byte))
 
 	if *usenum {
@@ -92,7 +91,6 @@ func indent(json_byte []byte) {
 		for _, fieldName := range fieldNames {
 			v, _ := walker.GetString(fieldName)
 			fmt.Printf("%s=%v\t", fieldName, v)
-
 		}
 		fmt.Println()
 		return

@@ -51,9 +51,9 @@ func NewQPSCount(k int, v int, sep string, sec int) *QPSCount {
 
 type QPSCount struct {
 	sp  *speed.Speed
+	sep string
 	k   int
 	v   int
-	sep string
 	n   int
 }
 
@@ -113,13 +113,13 @@ func (q *QPSCount) Print(str string) {
 	h_m_l := 0
 	var infos [][]string
 	for _, l := range arr {
-		l = strings.Replace(l, "]", "", -1)
-		l = strings.Replace(l, "[", "", -1)
-		l = strings.Replace(l, "(", "\t", -1)
-		l = strings.Replace(l, ")", "", -1)
-		l = strings.Replace(l, ",", "\t", -1)
-		l = strings.Replace(l, "/s", "", -1)
-		l = strings.Replace(l, ":", "", -1)
+		l = strings.ReplaceAll(l, "]", "")
+		l = strings.ReplaceAll(l, "[", "")
+		l = strings.ReplaceAll(l, "(", "\t")
+		l = strings.ReplaceAll(l, ")", "")
+		l = strings.ReplaceAll(l, ",", "\t")
+		l = strings.ReplaceAll(l, "/s", "")
+		l = strings.ReplaceAll(l, ":", "")
 
 		tmp := strings.Split(l, "\t")
 		h_l := len(tmp[0])
@@ -127,7 +127,7 @@ func (q *QPSCount) Print(str string) {
 			h_m_l = h_l
 		}
 		if len(tmp) > 1 {
-			tmp[1] = strings.Replace(tmp[1], "total", "", -1)
+			tmp[1] = strings.ReplaceAll(tmp[1], "total", "")
 		}
 
 		infos = append(infos, tmp)

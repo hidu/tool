@@ -1,6 +1,5 @@
-/**
-* @see https://github.com/Shopify/sarama/blob/master/tools/kafka-console-consumer/kafka-console-consumer.go
- */
+// @see https://github.com/Shopify/sarama/blob/master/tools/kafka-console-consumer/kafka-console-consumer.go
+
 package main
 
 import (
@@ -8,7 +7,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -31,6 +30,7 @@ var (
 	partitions = flag.String("partitions", "all", "The partitions to consume, can be 'all' or comma-separated numbers")
 	offset     = flag.Int64("offset", -1, "The offset to start with. Can be -2:oldest, -1:newest")
 	verbose    = flag.Bool("verbose", false, "Whether to turn on sarama logging")
+
 	// 	bufferSize = flag.Int("buffer-size", 256, "The buffer size of the message channel.")
 	httpConsumerUrl      = flag.String("http-con-url", os.Getenv("PUSHER_HTTP_CON_URL"), "http consumer url")
 	httpConsumerTimeout  = flag.Int("http-con-timeout", 10000, "http consumer timeout,ms")
@@ -55,11 +55,11 @@ var currentOffset int64
 func main() {
 	flag.Parse()
 
-	if *brokerList == "" {
+	if len(*brokerList) == 0 {
 		printUsageErrorAndExit("You have to provide -brokers as a comma-separated list, or set the KAFKA_PEERS environment variable.")
 	}
 
-	if *topic == "" {
+	if len(*topic) == 0 {
 		printUsageErrorAndExit("-topic is required")
 	}
 
@@ -69,7 +69,7 @@ func main() {
 		sarama.Logger = logger
 	}
 
-	if *httpConsumerJsonSuc != "" && !strings.Contains(*httpConsumerJsonSuc, "=") {
+	if len(*httpConsumerJsonSuc) != 0 && !strings.Contains(*httpConsumerJsonSuc, "=") {
 		printUsageErrorAndExit(`-http-check-json must contains "="`)
 	}
 
@@ -163,15 +163,15 @@ start:
 }
 
 func parseConUrlFlag() []string {
-	if *httpConsumerUrl == "" {
+	if len(*httpConsumerUrl) == 0 {
 		printUsageErrorAndExit("-http-con-url is required")
 	}
-	str := strings.Replace(strings.TrimSpace(*httpConsumerUrl), "\n", ";", -1)
+	str := strings.ReplaceAll(strings.TrimSpace(*httpConsumerUrl), "\n", ";")
 	arr := strings.Split(str, ";")
 	var urls []string
 	for _, line := range arr {
 		line = strings.TrimSpace(line)
-		if line == "" {
+		if len(line) == 0 {
 			continue
 		}
 		_, err := url.Parse(line)
@@ -240,7 +240,7 @@ func dealMessage(client *http.Client, msg *sarama.ConsumerMessage, try int) bool
 
 	resp, err := client.Do(req)
 
-	used := time.Now().Sub(start)
+	used := time.Since(start)
 
 	logData = append(logData, fmt.Sprintf("used_ms=%d", used.Nanoseconds()/1e6))
 	if err != nil {
@@ -249,7 +249,7 @@ func dealMessage(client *http.Client, msg *sarama.ConsumerMessage, try int) bool
 		return false
 	}
 	defer resp.Body.Close()
-	bd, respErr := ioutil.ReadAll(resp.Body)
+	bd, respErr := io.ReadAll(resp.Body)
 
 	if respErr != nil {
 		logData[1] = "error"
@@ -263,8 +263,8 @@ func dealMessage(client *http.Client, msg *sarama.ConsumerMessage, try int) bool
 		isSuc = false
 	}
 
-	if isSuc && *httpConsumerJsonSuc != "" {
-		var obj interface{}
+	if isSuc && len(*httpConsumerJsonSuc) != 0 {
+		var obj any
 		jsonErr := json.Unmarshal(bd, &obj)
 		if jsonErr != nil {
 			logData = append(logData, "resp_errno=unknow")
@@ -305,14 +305,14 @@ func getPartitions(c sarama.Consumer) ([]int32, error) {
 	return pList, nil
 }
 
-func printErrorAndExit(code int, format string, values ...interface{}) {
+func printErrorAndExit(code int, format string, values ...any) {
 	fmt.Fprintf(os.Stderr, "ERROR: %s\n", fmt.Sprintf(format, values...))
 	fmt.Fprintln(os.Stderr)
 	logger.Printf("ERROR: %s\n", fmt.Sprintf(format, values...))
 	os.Exit(code)
 }
 
-func printUsageErrorAndExit(format string, values ...interface{}) {
+func printUsageErrorAndExit(format string, values ...any) {
 	fmt.Fprintf(os.Stderr, "ERROR: %s\n", fmt.Sprintf(format, values...))
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Available command line options:")

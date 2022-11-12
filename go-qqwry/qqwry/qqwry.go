@@ -1,7 +1,5 @@
-/**
-*
-*from https://github.com/kayon/qqwry
- */
+// from https://github.com/kayon/qqwry
+
 package qqwry
 
 import (
@@ -23,8 +21,8 @@ const (
 )
 
 type QQwry struct {
-	datfile string
 	file    *os.File
+	datfile string
 }
 
 type QQwrySearch struct {
@@ -54,6 +52,7 @@ func NewQQwry(datfile string) *QQwry {
 	}
 	return wry
 }
+
 func (wry *QQwry) Close() {
 	if wry.file != nil {
 		wry.file.Close()
@@ -104,6 +103,7 @@ func (wry *QQwry) Search(ipstr string) (res Result) {
 	res.Area = strings.Trim(gbk2utf8(res.Area), "\u0000")
 	return
 }
+
 func (wry *QQwrySearch) indexOf(ip []byte) (index int64) {
 	wry.file.Seek(0, os.SEEK_SET)
 	first := wry.readLong()
@@ -130,6 +130,7 @@ func (wry *QQwrySearch) indexOf(ip []byte) (index int64) {
 	} // End for
 	return
 }
+
 func (wry *QQwrySearch) readString() string {
 	bs := make([]byte, 1)
 	res := []byte{}
@@ -140,6 +141,7 @@ func (wry *QQwrySearch) readString() string {
 	}
 	return string(res)
 }
+
 func (wry *QQwrySearch) readArea() (area string) {
 	origin, _ := wry.file.Seek(0, os.SEEK_CUR)
 	switch wry.mode() {
@@ -155,17 +157,20 @@ func (wry *QQwrySearch) readArea() (area string) {
 	} // End switch
 	return
 }
+
 func (wry *QQwrySearch) redirectOffset() int64 {
 	bs := make([]byte, 3)
 	wry.file.Read(bs)
 	bs = append(bs, 0)
 	return int64(binary.LittleEndian.Uint32(bs))
 }
+
 func (wry *QQwrySearch) readLong() uint32 {
 	bs := make([]byte, 4)
 	wry.file.Read(bs)
 	return binary.LittleEndian.Uint32(bs)
 }
+
 func (wry *QQwrySearch) readBytes() (res []byte) {
 	bs := make([]byte, 4)
 	wry.file.Read(bs)
@@ -174,16 +179,19 @@ func (wry *QQwrySearch) readBytes() (res []byte) {
 	}
 	return
 }
+
 func (wry *QQwrySearch) mode() byte {
 	bs := make([]byte, 1)
 	wry.file.Read(bs)
 	return bs[0]
 } // End Func:flag
+
 func (wry QQwrySearch) packing(ipstr string) (ip []byte) {
 	ip = make([]byte, 4)
 	binary.BigEndian.PutUint32(ip, wry.ip2long(ipstr))
 	return
 }
+
 func (wry QQwrySearch) ip2long(ipstr string) uint32 {
 	ip := net.ParseIP(ipstr)
 	if ip == nil {
@@ -191,6 +199,7 @@ func (wry QQwrySearch) ip2long(ipstr string) uint32 {
 	}
 	return binary.BigEndian.Uint32(ip.To4())
 }
+
 func (wry QQwrySearch) long2ip(iplong uint32) string {
 	ipByte := make([]byte, 4)
 	binary.BigEndian.PutUint32(ipByte, iplong)

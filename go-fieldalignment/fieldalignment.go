@@ -63,7 +63,7 @@ var detail = flag.Bool("detail", false, "result with detail")
 
 var debug bool
 
-func run(pass *analysis.Pass) (interface{}, error) {
+func run(pass *analysis.Pass) (any, error) {
 	if ft := flag.Lookup("v"); ft != nil {
 		debug, _ = strconv.ParseBool(ft.Value.String())
 	}

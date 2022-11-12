@@ -7,17 +7,17 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 )
 
 func main() {
 	flag.Parse()
 	f := flag.Arg(0)
-	if f == "" {
-		log.Fatalf("filename required")
+	if len(f) == 0 {
+		log.Fatal("filename required")
 	}
-	bf, err := ioutil.ReadFile(f)
+	bf, err := os.ReadFile(f)
 	if err != nil {
 		log.Fatalf("ReadFile(%q) %v", f, err)
 	}

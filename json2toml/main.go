@@ -14,7 +14,7 @@ import (
 )
 
 func main() {
-	var m interface{}
+	var m any
 	input, err := io.ReadAll(os.Stdin)
 	if err != nil {
 		log.Fatalln("read toml from stdin failed:", err)

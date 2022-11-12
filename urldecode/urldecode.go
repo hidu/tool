@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"unicode/utf8"
@@ -32,8 +31,8 @@ func main() {
 	flag.Parse()
 	if *encodeStr {
 		str := flag.Arg(0)
-		if str == "" {
-			bf, err := ioutil.ReadAll(os.Stdin)
+		if len(str) == 0 {
+			bf, err := io.ReadAll(os.Stdin)
 			if err != nil {
 				fmt.Fprint(os.Stderr, "read from stdin err:", err)
 				os.Exit(2)
@@ -108,7 +107,7 @@ func QueryUnescape(s []byte) string {
 	// Count %, check that they're well-formed.
 
 	n := bytes.Index(s, bp)
-	hasPlus := flagEncodeQueryComponent && bytes.Index(s, bplus) > -1
+	hasPlus := flagEncodeQueryComponent && bytes.Contains(s, bplus)
 
 	if n < 0 && !hasPlus {
 		return string(s)

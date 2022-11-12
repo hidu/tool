@@ -60,7 +60,7 @@ func main() {
 		log.Fatalln("open input file failed:", err)
 	}
 	defer rd.Close()
-	if *outPath == "" {
+	if len(*outPath) == 0 {
 		log.Fatalln("output file path is empty")
 	}
 	client = &http.Client{Timeout: time.Duration(*timeOut) * time.Second}
@@ -84,7 +84,7 @@ func main() {
 			line, err := buf.ReadBytes('\n')
 
 			lineStr := strings.TrimSpace(string(line))
-			if lineStr != "" {
+			if len(lineStr) != 0 {
 				addTask(lineStr)
 			}
 			if err == io.EOF {
@@ -119,7 +119,6 @@ func main() {
 func addTask(lineStr string) {
 	atomic.AddInt64(&taskTotal, 1)
 	jobs <- lineStr
-
 }
 
 func loadHistoryFile(outPath string) {
@@ -135,7 +134,7 @@ func loadHistoryFile(outPath string) {
 		line, err := buf.ReadBytes('\n')
 
 		lineStr := strings.TrimSpace(string(line))
-		if lineStr != "" {
+		if len(lineStr) != 0 {
 			strs := lineReg.Split(lineStr, 3)
 			if len(strs) > 2 {
 				code, _ := strconv.ParseInt(strs[1], 10, 64)
@@ -196,7 +195,6 @@ func parseWorker(id uint, job <-chan string) {
 }
 
 func parseLine(line string, times int) {
-
 	if times == 0 {
 		defer atomic.AddInt64(&taskDoneTotal, 1)
 	}
@@ -223,5 +221,4 @@ func parseLine(line string, times int) {
 	if times < 1 && (err != nil || resp.StatusCode != 200) {
 		parseLine(line, times+1)
 	}
-
 }

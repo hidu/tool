@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -18,14 +18,14 @@ var dsn_index = flag.Int("dsn_index", 0, "use which dsn in dsn_conf")
 var sql_file_path = flag.String("sql_file", "./sql.txt", "sql file path")
 
 func readFile(file_path string) (lines []string) {
-	data, err := ioutil.ReadFile(file_path)
+	data, err := os.ReadFile(file_path)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	tmp := strings.Split(strings.TrimSpace(string(data)), "\n")
 	for _, line := range tmp {
 		line = strings.TrimSpace(line)
-		if line != "" {
+		if len(line) != 0 {
 			lines = append(lines, line)
 		}
 	}

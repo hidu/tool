@@ -37,7 +37,7 @@ func hander_index(w http.ResponseWriter, r *http.Request) {
 func hander_ip(w http.ResponseWriter, r *http.Request) {
 	ip := strings.TrimSpace(r.FormValue("ip"))
 	ips := strings.TrimSpace(r.FormValue("ips"))
-	if ip == "" && ips == "" {
+	if len(ip) == 0 && len(ips) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("wrong params"))
 		return
@@ -45,9 +45,9 @@ func hander_ip(w http.ResponseWriter, r *http.Request) {
 	isShort := r.FormValue("short") == "1"
 
 	start := time.Now()
-	if ip != "" {
+	if len(ip) != 0 {
 		res := qw.Search(ip)
-		used := time.Now().Sub(start)
+		used := time.Since(start)
 		log.Printf("remote:%s ip=%s country:%s used:%s\n", r.RemoteAddr, ip, res.Country, used.String())
 
 		if isShort {
@@ -55,13 +55,13 @@ func hander_ip(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.Write([]byte(res.String()))
 		}
-	} else if ips != "" {
+	} else if len(ips) != 0 {
 		lines := strings.Split(ips, "\n")
 		results := make([]string, 0)
 		var area string
 		for _, line := range lines {
 			line := strings.TrimSpace(line)
-			if line != "" {
+			if len(line) != 0 {
 				res := qw.Search(line)
 				if isShort {
 					area = res.Country
