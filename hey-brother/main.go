@@ -128,7 +128,7 @@ func callHey(name string, url string) (*result, error) {
 	}
 	content = bytes.TrimSpace(content)
 	matches := qpsReg.FindAllStringSubmatch(string(content), -1)
-	qps, err := strconv.ParseFloat(matches[0][1], 10)
+	qps, err := strconv.ParseFloat(matches[0][1], 64)
 	if err != nil {
 		return nil, err
 	}

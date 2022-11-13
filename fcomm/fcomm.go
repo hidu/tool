@@ -70,11 +70,11 @@ func NewCommFile(name string, fieldId uint, fieldSep string) (*CommFile, error) 
 }
 
 func (f *CommFile) Start() {
-	scaner := bufio.NewScanner(f.File)
+	scanner := bufio.NewScanner(f.File)
 	var lineNo int64
-	for scaner.Scan() {
+	for scanner.Scan() {
 		lineNo++
-		line := scaner.Text()
+		line := scanner.Text()
 		fl, err := NewFileLine(line, lineNo, f.FieldID, f.FieldSeparator)
 
 		if err != nil {
@@ -309,7 +309,7 @@ func compareAndPrint(a *FileLine, inBFile bool, b *FileLine) {
 
 func checkError(msg string, err error) {
 	if err != nil {
-		fmt.Fprintln(os.Stderr, fmt.Sprintf("Error:\n\t%s:%s\n", msg, err))
+		fmt.Fprintf(os.Stderr, "Error:\n\t%s:%s\n", msg, err)
 		flag.Usage()
 		os.Exit(1)
 	}

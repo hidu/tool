@@ -21,14 +21,14 @@ var count = flag.Int("c", 10, "count")
 var debug = flag.Bool("debug", false, "show debug detail")
 var method = flag.String("method", "", "http method,eg:GET,POST,default is GET")
 var post = flag.String("post", "", "post body string,eg a=1&b=1")
-var post_body = flag.String("post_body", "", "post body in file")
-var content_type = flag.String("ct", "application/x-www-form-urlencoded", "Content-Type")
+var postBody = flag.String("post_body", "", "post body in file")
+var contentType = flag.String("ct", "application/x-www-form-urlencoded", "Content-Type")
 
 const (
-	METHOD_CONNECT string = "connect"
-	METHOD_WRITE          = "write"
-	METHOD_READ           = "read"
-	METHOD_TOTAL          = "total"
+	methodConnect = "connect"
+	methodWrite   = "write"
+	methodRead    = "read"
+	methodTotal   = "total"
 )
 
 func main() {
@@ -41,8 +41,8 @@ func main() {
 		body = *post
 	}
 
-	if len(*post_body) != 0 {
-		os.ReadFile(*post_body)
+	if len(*postBody) != 0 {
+		os.ReadFile(*postBody)
 	}
 
 	if len(*method) != 0 {
@@ -65,8 +65,8 @@ func main() {
 
 	if len(body) != 0 {
 		req.ContentLength = int64(len(body))
-		if len(*content_type) != 0 {
-			req.Header.Set("Content-Type", *content_type)
+		if len(*contentType) != 0 {
+			req.Header.Set("Content-Type", *contentType)
 		}
 		req.Header.Set("Content-Length", fmt.Sprintf("%d", len(body)))
 	}
@@ -91,7 +91,7 @@ func printTsResult(tsArr []*TimeMaps) {
 	fmt.Println(header)
 	stpl := "%-5s\t %-11s\t %-9s\t %-8s\t %-9s\t %-9s\n"
 
-	methods := []string{METHOD_CONNECT, METHOD_WRITE, METHOD_READ, METHOD_TOTAL}
+	methods := []string{methodConnect, methodWrite, methodRead, methodTotal}
 	res := make(map[string][]float64)
 	for _, method := range methods {
 		res[method] = make([]float64, 0)
@@ -104,7 +104,7 @@ func printTsResult(tsArr []*TimeMaps) {
 				res[method] = append(res[method], us)
 			}
 		}
-		fmt.Printf(stpl, fmt.Sprintf("%d", index), ts.UsedStr(METHOD_CONNECT), ts.UsedStr(METHOD_WRITE), ts.UsedStr(METHOD_READ), ts.UsedStr(METHOD_TOTAL), fmt.Sprintf("%d", ts.statusCode))
+		fmt.Printf(stpl, fmt.Sprintf("%d", index), ts.UsedStr(methodConnect), ts.UsedStr(methodWrite), ts.UsedStr(methodRead), ts.UsedStr(methodTotal), fmt.Sprintf("%d", ts.statusCode))
 	}
 
 	fmt.Println("")
@@ -144,7 +144,7 @@ func printTsResult(tsArr []*TimeMaps) {
 		fn := func(fl []float64) string {
 			return fmt.Sprintf("%.2f", myfn.fn(fl))
 		}
-		fmt.Printf(stpl, myfn.name, fn(res[METHOD_CONNECT]), fn(res[METHOD_WRITE]), fn(res[METHOD_READ]), fn(res[METHOD_TOTAL]), "-1")
+		fmt.Printf(stpl, myfn.name, fn(res[methodConnect]), fn(res[methodWrite]), fn(res[methodRead]), fn(res[methodTotal]), "-1")
 	}
 
 	fmt.Println("")
@@ -172,9 +172,9 @@ func TestCallUrl(req *http.Request) *TimeMaps {
 
 	log.Println("addr :", addr)
 
-	t0 := ts.Start(METHOD_TOTAL)
+	t0 := ts.Start(methodTotal)
 
-	t1 := ts.Start(METHOD_CONNECT)
+	t1 := ts.Start(methodConnect)
 	conn, err := net.Dial("tcp", addr)
 	t1.Stop(err)
 	if err != nil {
@@ -182,7 +182,7 @@ func TestCallUrl(req *http.Request) *TimeMaps {
 	}
 	defer conn.Close()
 
-	t2 := ts.Start(METHOD_WRITE)
+	t2 := ts.Start(methodWrite)
 	n, err := conn.Write(bf.Bytes())
 	t2.Stop(err)
 	log.Println("write:", n, "byte")
@@ -190,7 +190,7 @@ func TestCallUrl(req *http.Request) *TimeMaps {
 		return ts
 	}
 
-	t3 := ts.Start(METHOD_READ)
+	t3 := ts.Start(methodRead)
 	resp, err := http.ReadResponse(bufio.NewReader(conn), req)
 	if err != nil {
 		defer resp.Body.Close()

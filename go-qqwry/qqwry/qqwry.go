@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"io"
 	"log"
 	"net"
 	"os"
@@ -66,36 +67,36 @@ func (wry *QQwry) Search(ipstr string) (res Result) {
 	if offset == 0 {
 		return
 	}
-	search.file.Seek(offset, os.SEEK_SET)
+	search.file.Seek(offset, io.SeekStart)
 	res.Begin = search.long2ip(search.readLong())
 	startRedirect := search.redirectOffset()
 
-	search.file.Seek(startRedirect, os.SEEK_SET)
+	search.file.Seek(startRedirect, io.SeekStart)
 	res.End = search.long2ip(search.readLong())
 	switch search.mode() {
 	// 1、2都重定向
 	case REDIRECT_MODE_1:
 		startRedirect = search.redirectOffset()
-		search.file.Seek(startRedirect, os.SEEK_SET)
+		search.file.Seek(startRedirect, io.SeekStart)
 		switch search.mode() {
 		case REDIRECT_MODE_2:
-			search.file.Seek(search.redirectOffset(), os.SEEK_SET)
+			search.file.Seek(search.redirectOffset(), io.SeekStart)
 			res.Country = search.readString()
-			search.file.Seek(startRedirect+4, os.SEEK_SET)
+			search.file.Seek(startRedirect+4, io.SeekStart)
 			res.Area = search.readArea()
 		default:
-			search.file.Seek(startRedirect, os.SEEK_SET)
+			search.file.Seek(startRedirect, io.SeekStart)
 			res.Country = search.readString()
 			res.Area = search.readArea()
 		} // End switch
 	// 1重定向, 2没有重定向
 	case REDIRECT_MODE_2:
-		search.file.Seek(search.redirectOffset(), os.SEEK_SET)
+		search.file.Seek(search.redirectOffset(), io.SeekStart)
 		res.Country = search.readString()
-		search.file.Seek(startRedirect+8, os.SEEK_SET)
+		search.file.Seek(startRedirect+8, io.SeekStart)
 		res.Area = search.readArea()
 	default:
-		search.file.Seek(startRedirect+4, os.SEEK_SET)
+		search.file.Seek(startRedirect+4, io.SeekStart)
 		res.Country = search.readString()
 		res.Area = search.readArea()
 	} // End switch
@@ -105,7 +106,7 @@ func (wry *QQwry) Search(ipstr string) (res Result) {
 }
 
 func (wry *QQwrySearch) indexOf(ip []byte) (index int64) {
-	wry.file.Seek(0, os.SEEK_SET)
+	wry.file.Seek(0, io.SeekStart)
 	first := wry.readLong()
 	last := wry.readLong()
 	var low, mid, high uint32
@@ -113,12 +114,12 @@ func (wry *QQwrySearch) indexOf(ip []byte) (index int64) {
 	high = (last - first) / INDEX_LENGTH
 	for low <= high {
 		mid = (low + high) >> 1
-		wry.file.Seek(int64(first+mid*INDEX_LENGTH), os.SEEK_SET)
+		wry.file.Seek(int64(first+mid*INDEX_LENGTH), io.SeekStart)
 		begin = wry.readBytes()
 		if bytes.Compare(ip, begin) < 0 {
 			high = mid - 1
 		} else {
-			wry.file.Seek(wry.redirectOffset(), os.SEEK_SET)
+			wry.file.Seek(wry.redirectOffset(), io.SeekStart)
 			end = wry.readBytes()
 			if bytes.Compare(ip, end) > 0 {
 				low = mid + 1
@@ -143,16 +144,16 @@ func (wry *QQwrySearch) readString() string {
 }
 
 func (wry *QQwrySearch) readArea() (area string) {
-	origin, _ := wry.file.Seek(0, os.SEEK_CUR)
+	origin, _ := wry.file.Seek(0, io.SeekCurrent)
 	switch wry.mode() {
 	case 0:
 	case REDIRECT_MODE_1:
 		fallthrough
 	case REDIRECT_MODE_2:
-		wry.file.Seek(wry.redirectOffset(), os.SEEK_SET)
+		wry.file.Seek(wry.redirectOffset(), io.SeekStart)
 		area = wry.readString()
 	default:
-		wry.file.Seek(origin, os.SEEK_SET)
+		wry.file.Seek(origin, io.SeekStart)
 		area = wry.readString()
 	} // End switch
 	return

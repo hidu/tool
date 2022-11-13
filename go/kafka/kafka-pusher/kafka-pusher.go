@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"github.com/Shopify/sarama"
@@ -73,7 +74,7 @@ func main() {
 		printUsageErrorAndExit(`-http-check-json must contains "="`)
 	}
 
-	speedData = speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
+	speedData = speed.NewSpeed("call", 5, func(msg string) {
 		logger.Println("[speed]", msg)
 	})
 
@@ -104,7 +105,7 @@ start:
 
 	go func() {
 		signals := make(chan os.Signal, 1)
-		signal.Notify(signals, os.Kill, os.Interrupt)
+		signal.Notify(signals, syscall.SIGTERM, os.Interrupt)
 		<-signals
 		logger.Println("Initiating shutdown of consumer...")
 		close(closing)
@@ -147,7 +148,7 @@ start:
 						break
 					}
 				}
-				speedData.Inc(1, len(msg.Value), subNum)
+				speedData.Success("send", subNum)
 			}
 		}()
 	}
@@ -305,12 +306,12 @@ func getPartitions(c sarama.Consumer) ([]int32, error) {
 	return pList, nil
 }
 
-func printErrorAndExit(code int, format string, values ...any) {
-	fmt.Fprintf(os.Stderr, "ERROR: %s\n", fmt.Sprintf(format, values...))
-	fmt.Fprintln(os.Stderr)
-	logger.Printf("ERROR: %s\n", fmt.Sprintf(format, values...))
-	os.Exit(code)
-}
+// func printErrorAndExit(code int, format string, values ...any) {
+// 	fmt.Fprintf(os.Stderr, "ERROR: %s\n", fmt.Sprintf(format, values...))
+// 	fmt.Fprintln(os.Stderr)
+// 	logger.Printf("ERROR: %s\n", fmt.Sprintf(format, values...))
+// 	os.Exit(code)
+// }
 
 func printUsageErrorAndExit(format string, values ...any) {
 	fmt.Fprintf(os.Stderr, "ERROR: %s\n", fmt.Sprintf(format, values...))

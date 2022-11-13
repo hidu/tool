@@ -134,7 +134,7 @@ func (q *QPSCount) Print(str string) {
 	}
 
 	if q.n > 0 {
-		fmt.Fprint(os.Stdout, fmt.Sprintf("\033[%dA", q.n))
+		fmt.Fprintf(os.Stdout, "\033[%dA", q.n)
 		fmt.Fprint(os.Stdout, "\033[K\033[D")
 	}
 

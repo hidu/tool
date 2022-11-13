@@ -24,7 +24,7 @@ func main() {
 		log.Fatalf("DialUDP(%s) failed: %v", udpAddr.String(), err)
 	}
 	defer socket.Close()
-	for i := 0; i < 10; i++ {
+	for i := 0; i < *num; i++ {
 		msg := "hello:" + strconv.Itoa(i)
 
 		wrote, err := socket.Write([]byte(msg))

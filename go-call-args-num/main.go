@@ -21,7 +21,6 @@ var ts = token.NewFileSet()
 
 var needCall = flag.Bool("call", false, "func call")
 var needDefine = flag.Bool("d", true, "func define")
-var needResult = flag.Bool("r", true, "need result")
 
 func main() {
 	flag.Parse()

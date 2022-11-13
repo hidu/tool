@@ -24,17 +24,17 @@ func main() {
 		return
 	}
 	defer qw.Close()
-	http.HandleFunc("/", hander_index)
-	http.HandleFunc("/ip", hander_ip)
+	http.HandleFunc("/", handleIndex)
+	http.HandleFunc("/ip", handleIP)
 	err := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil)
 	log.Println(err)
 }
 
-func hander_index(w http.ResponseWriter, r *http.Request) {
+func handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(indexHtml))
 }
 
-func hander_ip(w http.ResponseWriter, r *http.Request) {
+func handleIP(w http.ResponseWriter, r *http.Request) {
 	ip := strings.TrimSpace(r.FormValue("ip"))
 	ips := strings.TrimSpace(r.FormValue("ips"))
 	if len(ip) == 0 && len(ips) == 0 {

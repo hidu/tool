@@ -495,9 +495,7 @@ func (lr *logRequest) reset() {
 
 func (lr *logRequest) addNotice(key string, val any) {
 	if val == nil {
-		if _, has := lr.data[key]; has {
-			delete(lr.data, key)
-		}
+		delete(lr.data, key)
 		return
 	}
 	if _, has := lr.data[key]; !has {

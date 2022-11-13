@@ -9,6 +9,7 @@ import (
 	"github.com/hidu/go-speed"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	pb "github.com/hidu/tool/go/kafka/kafka-agent/kafka"
 )
@@ -20,12 +21,12 @@ const (
 
 func main() {
 	// Set up a connection to the server.
-	conn, err := grpc.Dial(address, grpc.WithInsecure())
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
 
-	speedData := speed.NewSpeed("call", 5, func(msg string, sp *speed.Speed) {
+	speedData := speed.NewSpeed("call", 5, func(msg string) {
 		log.Println("speed", msg)
 	})
 
@@ -49,7 +50,7 @@ func main() {
 			log.Fatalf("could not greet: %v", err)
 		}
 		log.Println("Greeting", r)
-		speedData.Inc(1, 1, 1)
+		speedData.Success("send", 1)
 	}
 	speedData.Stop()
 }
