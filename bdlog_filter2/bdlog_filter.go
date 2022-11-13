@@ -29,25 +29,18 @@ func (cond *CondItem) Match(val float64) bool {
 	switch cond.Op {
 	case ">":
 		match = val > cond.Val
-		break
 	case ">=":
 		match = val >= cond.Val
-		break
 	case "<":
 		match = val < cond.Val
-		break
 	case "<=":
 		match = val <= cond.Val
-		break
 	case "=":
 		match = val == cond.Val
-		break
 	case "<>":
 		match = val != cond.Val
-		break
 	default:
 		log.Println("not support operate:", cond.Op)
-		break
 	}
 	return match
 }
