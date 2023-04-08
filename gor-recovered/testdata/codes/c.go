@@ -24,7 +24,6 @@ func c1(){
 }
 
 func call(fn func()){
-t
 }
 
 func c2(){
