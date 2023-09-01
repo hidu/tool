@@ -10,29 +10,36 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/antchfx/htmlquery"
 )
 
-var input = flag.String("f", "", "input file path. read from stdin when it's empty")
+var input = flag.String("f", "", `Input HTML file path or url.
+read from stdin when it's empty`)
 
-var nodePath = flag.String("xp", os.Getenv("Go_HTMLQuery_XP"), "node's xpath. default value from env  'Go_HTMLQuery_XP'")
+var nodePath = flag.String("xp", os.Getenv("Go_HTMLQuery_XP"), `HTML node's xpath.
+default value from env  'Go_HTMLQuery_XP'`)
+
+var timeout = flag.String("t", "10s", "Timeout for HTTP Requests")
 
 func main() {
 	flag.Parse()
+
 	if *nodePath == "" {
-		log.Fatalln("with empty -xp")
+		log.Fatalln("node's xpath ( -xp ) is required")
 	}
 
-	var code []byte
-	var err error
+	defer func() {
+		if re := recover(); re != nil {
+			log.Fatalln(re)
+		}
+	}()
 
-	if *input == "" {
-		code, err = io.ReadAll(os.Stdin)
-	} else {
-		code, err = os.ReadFile(*input)
-	}
+	code, err := fetchContent()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -42,4 +49,27 @@ func main() {
 	}
 	node := htmlquery.FindOne(doc, *nodePath)
 	fmt.Println(htmlquery.InnerText(node))
+}
+
+func fetchContent() ([]byte, error) {
+	if *input == "" {
+		return io.ReadAll(os.Stdin)
+	}
+
+	if strings.HasPrefix(*input, "http://") || strings.HasPrefix(*input, "https://") {
+		tm, err := time.ParseDuration(*timeout)
+		if err != nil {
+			return nil, fmt.Errorf("invalid timeout %q: %w", *timeout, err)
+		}
+		c := &http.Client{
+			Timeout: tm,
+		}
+		resp, err := c.Get(*input)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		return io.ReadAll(resp.Body)
+	}
+	return os.ReadFile(*input)
 }
