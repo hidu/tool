@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,12 +19,15 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/fsgo/fsconf"
 )
 
-var hp = flag.String("hp", "-c 1 -n 1", "hey params")
-
-var in = flag.String("in", "task.txt", `task file name`)
-
+var hey = flag.String("hey", "hey", "hey command")
+var total = flag.Int("n", 200, "Number of requests to run")
+var workers = flag.String("c", "1", "Number of workers to run concurrently.")
+var hp = flag.String("hp", "", "hey params")
+var in = flag.String("conf", "./task.toml", `task file name`)
 var dir = flag.String("dir", "", "result file dir")
 
 var out = flag.String("out", "", `result file name, 
@@ -38,42 +42,70 @@ support var:
 var s = flag.Int("sleep", 10, "sleep x seconds after each")
 var detail = flag.Bool("detail", true, "save hey result to content")
 
+var cfg *Config
+
+func loadConfig() {
+	if err := fsconf.Parse(*in, &cfg); err != nil {
+		log.Fatalln(err)
+	}
+
+	if len(cfg.Vars) > 0 {
+		for k, v := range cfg.Vars {
+			os.Setenv("var_"+k, v)
+		}
+		if err := fsconf.Parse(*in, &cfg); err != nil {
+			log.Fatalln(err)
+		}
+	}
+}
+
+func getWorkers() []int {
+	line := strings.Split(*workers, ",")
+	var nums []int
+	for _, str := range line {
+		str = strings.TrimSpace(str)
+		if str == "" {
+			continue
+		}
+		c, err := strconv.Atoi(str)
+		if err != nil {
+			log.Fatalf("parser %q failed: %v\n", str, err)
+		}
+		if c > 0 {
+			nums = append(nums, c)
+		}
+	}
+	if len(nums) == 0 {
+		log.Fatalln("param -c is required")
+	}
+	return nums
+}
+
 func main() {
 	flag.Parse()
-	content, err := os.ReadFile(*in)
-	if err != nil {
-		log.Fatalln(err.Error())
-	}
+
+	loadConfig()
 
 	outName, outFile := getOutFile()
 	defer outFile.Close()
 	log.Println("out: ", outName)
 	_, _ = fmt.Fprintf(outFile, specLine("From: "+*in+", Args: "+*hp)+"\n")
 
-	lines := strings.Split(string(content), "\n")
-	for i := 0; i < len(lines); i++ {
-		line := strings.TrimSpace(lines[i])
-		if len(line) == 0 {
-			continue
-		}
-		if line[0] == '#' {
-			_, _ = fmt.Fprintf(outFile, specLine(line)+"\n")
-			continue
-		}
-		arr := strings.Fields(line)
-		log.Printf("line %d: %q\n", i+1, arr)
-		if len(arr) != 2 {
-			log.Println("ignored")
-			continue
-		}
-		ret, err := callHey(arr[0], arr[1])
-		if err != nil {
-			log.Println("has error:", err)
-			continue
-		}
-		_, _ = fmt.Fprintf(outFile, ret.String()+"\n")
-		if i < len(lines)-1 {
-			time.Sleep(time.Duration(*s) * time.Second)
+	conc := getWorkers()
+
+	for i, task := range cfg.Tasks {
+		for _, num := range conc {
+			ps := []string{"-c", strconv.Itoa(num)}
+			ret, err := task.Execute(ps)
+			if err != nil {
+				log.Println("has error:", err)
+				continue
+			}
+			_, _ = fmt.Fprintf(outFile, ret.String()+"\n")
+
+			if i < len(cfg.Tasks)-1 {
+				time.Sleep(time.Duration(*s) * time.Second)
+			}
 		}
 	}
 }
@@ -105,11 +137,59 @@ func getOutFile() (string, io.WriteCloser) {
 	return name, f
 }
 
-func callHey(name string, url string) (*result, error) {
+func specLine(line string) string {
+	data := map[string]any{
+		"Special": line,
+	}
+	b, _ := json.Marshal(data)
+	return string(b)
+}
+
+type result struct {
+	Name   string
+	Args   []string
+	URL    string
+	Detail string
+	QPS    float64
+	Cost   float64
+}
+
+func (r *result) String() string {
+	b, _ := json.Marshal(r)
+	return string(b)
+}
+
+var qpsReg = regexp.MustCompile(`Requests/sec:\s+(\d+\.\d+)`)
+
+type Config struct {
+	Vars  map[string]string
+	Tasks []*Task
+}
+
+type Task struct {
+	Name   string
+	Wait   string
+	Before []string
+	URL    string
+}
+
+func (ts *Task) Execute(args []string) (*result, error) {
+	ts.executeBefore()
+	return callHey(ts, args)
+}
+
+func callHey(task *Task, params []string) (*result, error) {
 	var args []string
-	args = append(args, strings.Fields(*hp)...)
-	args = append(args, url)
-	cmd := exec.Command("hey", args...)
+	if *hp != "" {
+		args = append(args, strings.Fields(*hp)...)
+	}
+	if *total > 0 {
+		args = append(args, "-n", strconv.Itoa(*total))
+	}
+	args = append(args, params...)
+
+	args = append(args, task.URL)
+	cmd := exec.Command(*hey, args...)
 	log.Println("exec:", cmd.String())
 
 	bf := &bytes.Buffer{}
@@ -133,10 +213,11 @@ func callHey(name string, url string) (*result, error) {
 		return nil, err
 	}
 	ret := &result{
-		Name:    name,
-		URL:     url,
-		QPS:     qps,
-		Seconds: cost.Seconds(),
+		Name: task.Name,
+		URL:  task.URL,
+		Args: args[:len(args)-1],
+		QPS:  qps,
+		Cost: cost.Seconds(),
 	}
 	if *detail {
 		ret.Detail = string(content)
@@ -144,25 +225,21 @@ func callHey(name string, url string) (*result, error) {
 	return ret, nil
 }
 
-func specLine(line string) string {
-	data := map[string]any{
-		"Special": line,
+var client = &http.Client{
+	Timeout: 3 * time.Second,
+}
+
+func (ts *Task) executeBefore() {
+	wait, _ := time.ParseDuration(ts.Wait)
+	if wait <= 0 {
+		wait = 3 * time.Second
 	}
-	b, _ := json.Marshal(data)
-	return string(b)
+	for _, u := range ts.Before {
+		resp, err := client.Get(u)
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+		log.Println("call before: ", u, "err:", err)
+		time.Sleep(wait)
+	}
 }
-
-type result struct {
-	Name    string
-	URL     string
-	Detail  string
-	QPS     float64
-	Seconds float64
-}
-
-func (r *result) String() string {
-	b, _ := json.Marshal(r)
-	return string(b)
-}
-
-var qpsReg = regexp.MustCompile(`Requests/sec:\s+(\d+\.\d+)`)

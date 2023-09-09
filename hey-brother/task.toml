@@ -1,0 +1,11 @@
+[Vars]
+host="127.0.0.1:8080"
+
+[[Tasks]]
+Name="task1"
+URL="http://{osenv.var_host}/index"
+
+[[Tasks]]
+Name="task2"
+URL="http://{osenv.var_host}/help"
+Before=["http://{osenv.var_host}/before"]
