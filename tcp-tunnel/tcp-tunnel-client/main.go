@@ -5,6 +5,8 @@
 package main
 
 import (
+	"context"
+	"crypto/tls"
 	"flag"
 	"log"
 	"net"
@@ -15,13 +17,12 @@ import (
 	"github.com/hidu/tool/go/tcp-tunnel/internal"
 )
 
-// var adminAddr = flag.String("admin", "192.168.1.10:8080", "remote admin server addr")
-var remoteAddr = flag.String("remote", "192.168.1.10:8081", "remote  tunnel server addr")
-var localAddr = flag.String("local", "127.0.0.1:8080", "local server addr tunnel to")
+var remoteAddr = internal.FlagEnvString("remote", "TT_C_remove", "192.168.1.10:8090", "remote  tunnel server addr")
+var localAddr = internal.FlagEnvString("local", "TT_C_local", "127.0.0.1:8080", "local server addr tunnel to")
 
-// var token = flag.String("token", "", "token")
-var worker = flag.Int("c", 3, "connections to keep")
-var timeout = flag.Duration("t", 10*time.Second, "connect timeout")
+var worker = internal.FlagEnvInt("c", "TT_C_c", 3, "connections to keep")
+var timeout = internal.FlagEnvDuration("t", "TT_C_t", 300*time.Second, "connect timeout")
+var useTLS = internal.FlagEnvBool("tls", "TT_C_tls", true, "enable tls")
 
 func main() {
 	flag.Parse()
@@ -36,15 +37,30 @@ func main() {
 var tunnelConns = make(chan net.Conn, 3)
 
 func startTunnelConn() {
+	var dialer1 internal.Dialer
+	if *useTLS {
+		dialer1 = &tls.Dialer{
+			NetDialer: &net.Dialer{},
+			Config:    internal.ClientTlsConfig,
+		}
+	} else {
+		dialer1 = &net.Dialer{}
+	}
 	var cf int
 	for {
-		conn, err := net.DialTimeout("tcp", *remoteAddr, *timeout)
+		start := time.Now()
+		ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+		conn, err := dialer1.DialContext(ctx, "tcp", *remoteAddr)
+		cancel()
+		cost := time.Since(start)
+
 		if err != nil {
 			cf++
-			log.Printf("connect to remote %s failed: %s\n", *remoteAddr, err.Error())
+			log.Printf("connect to remote %s failed: %s, cost=%s\n", *remoteAddr, err.Error(), cost.String())
 			wait(cf)
 			continue
 		}
+		log.Printf("connect to remote %s, cost=%s\n", *remoteAddr, cost.String())
 		cf = 0
 		tunnelConns <- conn
 	}
@@ -55,7 +71,7 @@ func wait(n int) {
 		time.Sleep(200 * time.Millisecond)
 		return
 	}
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(time.Second)
 }
 
 var tunnelID atomic.Int64
@@ -85,6 +101,7 @@ func getLocalConn() net.Conn {
 	for i := 0; ; i++ {
 		conn, err := net.DialTimeout("tcp", *localAddr, *timeout)
 		if err == nil {
+			internal.SetConnFlags(conn)
 			return conn
 		}
 		wait(i)
