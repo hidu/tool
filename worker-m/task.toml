@@ -1,0 +1,11 @@
+[Workers.echo]
+Home = ""
+Cmd = "echo"
+Args = ["hello"]
+Next="1m"
+
+
+[Workers.sleep]
+Home = ""
+Cmd = "sleep"
+Args = ["10"]
