@@ -126,7 +126,7 @@ func (c Command) Run(ctxRoot context.Context, name string) error {
 
 	ctxWithExpire := func() (context.Context, context.CancelFunc) {
 		if expire > time.Second {
-			return context.WithCancel(ctxRoot)
+			return context.WithTimeout(ctxRoot,expire)
 		}
 		return context.WithCancel(ctxRoot)
 	}
