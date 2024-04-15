@@ -2,10 +2,20 @@
 Home = ""
 Cmd = "echo"
 Args = ["hello"]
-Next="1m"
+Next="1m"      # 下次调度运行的时间间隔
+Expire="1h"    # 进程最大运行时长，如 1h
 
 
 [Workers.sleep]
 Home = ""
 Cmd = "sleep"
 Args = ["10"]
+
+[[Workers.sleep.Actions]]
+When="after_start"
+Do="HTTPCall"
+[Workers.sleep.Actions.Params]
+URL ="http://www.baidu.com/"
+Times = -1
+Interval = "1s"
+Timeout = "1s"
