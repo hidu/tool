@@ -7,6 +7,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -60,7 +61,8 @@ func runServer() {
 	l, err := net.Listen("tcp", *listen)
 	internal.Assert(err, "listen %s failed", *listen)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("ok"))
+		txt := fmt.Sprintf("ok, pid=%d\n", os.Getpid())
+		_, _ = w.Write([]byte(txt))
 	})
 	go func() {
 		err = http.Serve(l, nil)
