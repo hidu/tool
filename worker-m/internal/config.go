@@ -7,6 +7,7 @@ package internal
 import (
 	"context"
 	"log"
+	"slices"
 
 	"github.com/BurntSushi/toml"
 )
@@ -20,11 +21,18 @@ func LoadConfig(fp string) *ConfigFile {
 	if len(cf.Workers) == 0 {
 		log.Fatalln("no workers")
 	}
+	if len(cf.Env) > 0 {
+		for name, cmd := range cf.Workers {
+			cmd.Env = slices.Insert(cmd.Env, 0, cf.Env...)
+			cf.Workers[name] = cmd
+		}
+	}
 	return cf
 }
 
 type ConfigFile struct {
 	Workers map[string]Command
+	Env     []string // 环境变量，会设置给所有的 Workers
 }
 
 func (cf *ConfigFile) Run(ctx context.Context) error {

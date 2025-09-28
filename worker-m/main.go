@@ -8,6 +8,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"html/template"
 	"log"
 	"net"
 	"net/http"
@@ -22,6 +23,8 @@ import (
 var config = flag.String("c", "./task.toml", "toml config path")
 var listen = flag.String("l", ":9205", "listen addr")
 
+var createAt = time.Now()
+
 func main() {
 	flag.Parse()
 	cf := internal.LoadConfig(*config)
@@ -34,11 +37,31 @@ func main() {
 	http.HandleFunc("/exit", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("call /exit", r.RemoteAddr)
 		cancel()
-		_, _ = w.Write([]byte("exiting ..."))
+		tpl := template.Must(template.New("exit").Parse(exitHTML))
+		values := map[string]any{
+			"PID":      os.Getpid(),
+			"CreateAt": createAt.Format(time.DateTime),
+		}
+		_ = tpl.Execute(w, values)
 	})
 
 	log.Fatalln("exit:", cf.Run(ctx))
 }
+
+const exitHTML = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Exit</title>
+  <meta http-equiv="refresh" content="3;url=/">
+</head>
+<body>
+  <p>PID={{.PID}}</p>
+  <p>CreateAt={{.CreateAt}}</p>
+  <p>exiting ...</p>
+</body>
+</html>
+`
 
 func getContext() (context.Context, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -60,8 +83,9 @@ func runServer() {
 	}
 	l, err := net.Listen("tcp", *listen)
 	internal.Assert(err, "listen %s failed", *listen)
+	log.Println("server listening on", l.Addr().String())
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		txt := fmt.Sprintf("ok, pid=%d\n", os.Getpid())
+		txt := fmt.Sprintf("PID=%d\nCreateAt=%s", os.Getpid(), createAt.Format(time.DateTime))
 		_, _ = w.Write([]byte(txt))
 	})
 	go func() {

@@ -10,8 +10,11 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/fsgo/cmdutil"
 )
 
 type Command struct {
@@ -21,6 +24,7 @@ type Command struct {
 	Expire  string // 进程最大运行时长，如 1h
 	Next    string // 下次运行的时间间隔,如 1h
 	Actions actions
+	Env     []string // 环境变量
 }
 
 func (c Command) Run(ctxRoot context.Context, name string) error {
@@ -46,6 +50,14 @@ func (c Command) Run(ctxRoot context.Context, name string) error {
 		cmdName := fmt.Sprintf("[%s]", cmd.String())
 		lg.Println(cmdName, "Start..., Dir=", c.Home)
 		cmd.Dir = c.Home
+		if len(c.Env) > 0 {
+			ev := &cmdutil.OSEnv{}
+			for _, item := range c.Env {
+				k, v, _ := strings.Cut(item, "=")
+				_ = ev.Set(k, v)
+			}
+			cmd.Env = ev.Environ()
+		}
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = writeFn(func(b []byte) (int, error) {
 			lg.Print(string(b))
