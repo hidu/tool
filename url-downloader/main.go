@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -124,7 +123,7 @@ func run(inputFile string, outputDir string, concurrency int, timeout time.Durat
 					result Result
 					err    error
 				)
-
+				start := time.Now()
 				switch {
 				case task.Err != nil:
 					result = ResultFailed
@@ -136,6 +135,7 @@ func run(inputFile string, outputDir string, concurrency int, timeout time.Durat
 				default:
 					result, err = downloadTask(client, task)
 				}
+				cost := time.Since(start)
 
 				mu.Lock()
 
@@ -144,13 +144,13 @@ func run(inputFile string, outputDir string, concurrency int, timeout time.Durat
 				switch result {
 				case ResultSuccess:
 					success++
-					fmt.Printf("[%d/%d] [OK]     %s\n",
-						done, total, task.Out)
+					fmt.Printf("[%d/%d] [OK]     %s  %d ms\n",
+						done, total, filepath.ToSlash(task.Out), cost.Milliseconds())
 
 				case ResultSkipped:
 					skipped++
 					fmt.Printf("[%d/%d] [SKIP]   %s (already exists or duplicate)\n",
-						done, total, task.Out)
+						done, total, filepath.ToSlash(task.Out))
 
 				case ResultFailed:
 					failed++
@@ -290,8 +290,11 @@ func parseTask(raw string) (Task, error) {
 
 	// Automatically extract filename if output path is omitted.
 	if task.Out == "" {
-		fileName := path.Base(u.Path)
-		if fileName == "." || fileName == "/" || fileName == "" {
+		fileName := strings.TrimLeft(u.Path, "/")
+		if fileName == "" {
+			fileName = "index.html"
+		}
+		if fileName == "." {
 			return task, errors.New("cannot extract filename from URL")
 		}
 
@@ -318,7 +321,7 @@ func parseTask(raw string) (Task, error) {
 
 // downloadTask downloads a single file.
 func downloadTask(client *http.Client, task Task) (Result, error) {
-	if task.isDiscard() {
+	if !task.isDiscard() {
 		// Skip existing files.
 		info, err := os.Stat(task.outputPath())
 
