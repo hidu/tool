@@ -104,7 +104,7 @@ var flagEncodeQueryComponent = mode == encodeQueryComponent
 var unescapeBuf = make([]byte, 1024*1024)
 
 func QueryUnescape(s []byte) string {
-	// Count %, check that they're well-formed.
+	// Total %, check that they're well-formed.
 
 	n := bytes.Index(s, bp)
 	hasPlus := flagEncodeQueryComponent && bytes.Contains(s, bplus)

@@ -12,7 +12,7 @@ It is generated from these files:
 It has these top-level messages:
 
 	Request
-	Reply
+	Result
 */
 package kafka
 
@@ -71,7 +71,7 @@ func (*Reply) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
 func init() {
 	proto.RegisterType((*Request)(nil), "kafka.Request")
-	proto.RegisterType((*Reply)(nil), "kafka.Reply")
+	proto.RegisterType((*Reply)(nil), "kafka.Result")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
